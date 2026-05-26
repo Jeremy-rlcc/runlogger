@@ -87,9 +87,21 @@ textarea{resize:none;min-height:72px;}
 .draw-active-banner{display:none;background:rgba(184,240,74,.12);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;color:var(--accent);text-transform:uppercase;text-align:center;margin-bottom:8px;}
 
 /* INTERVALS */
-.interval-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;position:relative;}
+.interval-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;position:relative;}
 .remove-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:0 4px;}
 .add-interval-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:8px;cursor:pointer;margin-bottom:12px;}
+.rep-row{display:grid;grid-template-columns:28px 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px;}
+.rep-num{font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--muted);text-align:right;}
+.rep-summary{background:var(--surface);border-radius:6px;padding:8px 10px;margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1px;display:flex;gap:12px;flex-wrap:wrap;}
+.rep-summary span{color:var(--muted);}
+.rep-summary b{color:var(--accent);}
+.rep-summary .best{color:var(--accent2);}
+.rep-summary .worst{color:var(--danger);}
+.block-header{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text);margin-bottom:10px;}
+.recovery-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:10px;}
+.recovery-btn{flex:1;background:none;border:none;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:7px 4px;cursor:pointer;transition:all .15s;}
+.recovery-btn.active{background:var(--surface2);color:var(--accent2);}
+
 
 /* ROUTES */
 .route-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
@@ -122,7 +134,7 @@ textarea{resize:none;min-height:72px;}
 <body>
 
 <header>
-  <div class="logo">STR<span>IDE</span><small>v21</small></div>
+  <div class="logo">STR<span>IDE</span><small>v23</small></div>
   <button onclick="openModal('data-modal')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;font-size:20px;line-height:1;" title="Data">⚙</button>
 </header>
 
@@ -181,8 +193,8 @@ textarea{resize:none;min-height:72px;}
       <div class="form-group">
         <label>Run Type</label>
         <div class="toggle-group" id="run-type-toggle">
-          <button class="toggle-btn active" onclick="setRunType('easy')">Easy</button>
-          <button class="toggle-btn" onclick="setRunType('tempo')">Tempo</button>
+          <button class="toggle-btn active" onclick="setRunType('easy')">Steady</button>
+          <button class="toggle-btn" onclick="setRunType('tempo')">Hard</button>
           <button class="toggle-btn" onclick="setRunType('interval')">Intervals</button>
         </div>
       </div>
@@ -197,11 +209,12 @@ textarea{resize:none;min-height:72px;}
       <div id="interval-run-ui" style="display:none">
         <div class="row-2">
           <div class="form-group"><label>Warmup (min)</label><input type="number" id="run-warmup" min="0" placeholder="0" inputmode="numeric"></div>
-          <div class="form-group"><label>Cooldown (min)</label><input type="number" id="run-cooldown" min="0" placeholder="0" inputmode="numeric"></div>
+          <div class="form-group"><label>Warmdown (min)</label><input type="number" id="run-cooldown" min="0" placeholder="0" inputmode="numeric"></div>
         </div>
-        <div class="section-title" style="margin-bottom:10px">Intervals</div>
+        <div class="section-title" style="margin-bottom:10px">Interval Blocks</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">Each block is one set of reps at the same distance. Add multiple blocks for mixed-distance sessions.</p>
         <div id="intervals-container"></div>
-        <button class="add-interval-btn" onclick="addInterval()">+ Add Interval</button>
+        <button class="add-interval-btn" onclick="addIntervalBlock()">+ Add Interval Block</button>
       </div>
 
       <div class="form-group"><label>Notes</label><textarea id="run-notes" placeholder="How did it feel…"></textarea></div>
@@ -285,8 +298,8 @@ textarea{resize:none;min-height:72px;}
     <div class="form-group">
       <label>Run Type</label>
       <div class="toggle-group" id="edit-type-toggle">
-        <button class="toggle-btn active" onclick="setEditRunType('easy')">Easy</button>
-        <button class="toggle-btn" onclick="setEditRunType('tempo')">Tempo</button>
+        <button class="toggle-btn active" onclick="setEditRunType('easy')">Steady</button>
+        <button class="toggle-btn" onclick="setEditRunType('tempo')">Hard</button>
         <button class="toggle-btn" onclick="setEditRunType('interval')">Intervals</button>
       </div>
     </div>
@@ -299,16 +312,12 @@ textarea{resize:none;min-height:72px;}
     </div>
     <div id="edit-interval-ui" style="display:none">
       <div class="row-2">
-        <div class="form-group"><label>Distance (km)</label><input type="number" id="edit-dist-iv" step="0.1" inputmode="decimal"></div>
-        <div class="form-group"></div>
-      </div>
-      <div class="row-2">
         <div class="form-group"><label>Warmup (min)</label><input type="number" id="edit-warmup" min="0" inputmode="numeric"></div>
-        <div class="form-group"><label>Cooldown (min)</label><input type="number" id="edit-cooldown" min="0" inputmode="numeric"></div>
+        <div class="form-group"><label>Warmdown (min)</label><input type="number" id="edit-cooldown" min="0" inputmode="numeric"></div>
       </div>
-      <div class="section-title" style="margin-bottom:10px">Intervals</div>
+      <div class="section-title" style="margin-bottom:10px">Interval Blocks</div>
       <div id="edit-intervals-container"></div>
-      <button class="add-interval-btn" onclick="addEditInterval()">+ Add Interval</button>
+      <button class="add-interval-btn" onclick="addEditIntervalBlock(null)">+ Add Interval Block</button>
       <div style="height:10px"></div>
     </div>
     <div class="form-group"><label>Notes</label><textarea id="edit-notes" placeholder="How did it feel…"></textarea></div>
@@ -569,6 +578,9 @@ function setRunType(type){
   document.querySelectorAll('#run-type-toggle .toggle-btn').forEach((b,i)=>b.classList.toggle('active',['easy','tempo','interval'][i]===type));
   document.getElementById('simple-run-ui').style.display=type!=='interval'?'':'none';
   document.getElementById('interval-run-ui').style.display=type==='interval'?'':'none';
+  if(type==='interval'&&document.getElementById('intervals-container').children.length===0){
+    addIntervalBlock(null);
+  }
 }
 
 function populateRouteSelect(){
@@ -578,22 +590,121 @@ function populateRouteSelect(){
 }
 
 // ── INTERVALS ─────────────────────────────────────────────────────────────────
+// ── TIME PARSING ──────────────────────────────────────────────────────────────
+// Accepts: "45" → 45s, "1:23" → 83s, "2:05" → 125s
+function parseTime(str){
+  if(!str||!str.trim()) return null;
+  str=str.trim();
+  if(str.includes(':')){
+    const [m,s]=str.split(':');
+    return parseInt(m)*60+(parseInt(s)||0);
+  }
+  return parseInt(str)||null;
+}
+function fmtTime(secs){
+  if(secs==null) return '—';
+  if(secs<60) return secs+'s';
+  const m=Math.floor(secs/60), s=secs%60;
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ── INTERVAL BLOCKS ───────────────────────────────────────────────────────────
 let ivc=0;
-function addInterval(){
-  ivc++; const id='iv-'+ivc; const el=document.createElement('div');
-  el.className='interval-block'; el.id=id;
-  el.innerHTML=`<button class="remove-btn" onclick="document.getElementById('${id}').remove()">×</button>
-    <div style="font-family:'Barlow Condensed';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Rep ${ivc}</div>
+
+function addIntervalBlock(ivData){
+  ivc++;
+  const bid='ivb-'+ivc;
+  const reps=ivData?ivData.reps:3;
+  const recovery=ivData?ivData.recovery:'standing';
+  const dist=ivData?ivData.dist:'';
+
+  const el=document.createElement('div');
+  el.className='interval-block'; el.id=bid;
+  el.innerHTML=`
+    <button class="remove-btn" onclick="document.getElementById('${bid}').remove()">×</button>
+    <div class="block-header">Block ${ivc}</div>
     <div class="row-2">
-      <div class="form-group" style="margin-bottom:8px"><label>Reps</label><input type="number" class="iv-reps" min="1" value="1" inputmode="numeric"></div>
-      <div class="form-group" style="margin-bottom:8px"><label>Dist (m)</label><input type="number" class="iv-dist" placeholder="400" inputmode="numeric"></div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Distance (m)</label>
+        <input type="number" class="iv-dist" value="${dist}" placeholder="e.g. 400" inputmode="numeric">
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>Reps</label>
+        <input type="number" class="iv-reps" min="1" value="${reps}" inputmode="numeric" onchange="rebuildRepRows(this)">
+      </div>
     </div>
-    <div class="row-2">
-      <div class="form-group" style="margin-bottom:8px"><label>Target</label><input type="text" class="iv-target" placeholder="mm:ss"></div>
-      <div class="form-group" style="margin-bottom:8px"><label>Actual</label><input type="text" class="iv-actual" placeholder="mm:ss"></div>
+    <label style="margin-bottom:6px">Recovery</label>
+    <div class="recovery-toggle">
+      <button class="recovery-btn ${recovery==='standing'?'active':''}" onclick="setRecovery(this,'standing')">Standing rest</button>
+      <button class="recovery-btn ${recovery==='jog'?'active':''}" onclick="setRecovery(this,'jog')">Jog back</button>
     </div>
-    <div class="form-group" style="margin-bottom:0"><label>Rest (min)</label><input type="number" class="iv-rest" placeholder="2" inputmode="decimal"></div>`;
+    <div class="row-2" style="margin-bottom:10px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Recovery time</label>
+        <input type="text" class="iv-recovery-time" placeholder="e.g. 90 or 2:00" value="${ivData?ivData.recoveryTime||'':''}">
+      </div>
+      <div></div>
+    </div>
+    <label style="margin-bottom:6px">Rep Times <span style="color:var(--muted);font-size:10px;letter-spacing:0;text-transform:none;font-family:'Barlow',sans-serif">(e.g. 45 or 1:23)</span></label>
+    <div class="rep-rows"></div>
+    <div class="rep-summary" style="display:none"></div>`;
+
   document.getElementById('intervals-container').appendChild(el);
+  buildRepRows(el, reps, ivData?ivData.repTimes:[]);
+  return el;
+}
+
+function setRecovery(btn, type){
+  const block=btn.closest('.interval-block');
+  block.querySelectorAll('.recovery-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function rebuildRepRows(input){
+  const block=input.closest('.interval-block');
+  const reps=parseInt(input.value)||1;
+  buildRepRows(block, reps, []);
+}
+
+function buildRepRows(block, reps, existing){
+  const container=block.querySelector('.rep-rows');
+  container.innerHTML='';
+  for(let i=1;i<=reps;i++){
+    const row=document.createElement('div');
+    row.className='rep-row';
+    const val=existing&&existing[i-1]!=null?fmtTime(existing[i-1]):'';
+    row.innerHTML=`
+      <div class="rep-num">${i}</div>
+      <div><input type="text" class="rep-time" placeholder="time" value="${val==='—'?'':val}" oninput="updateRepSummary(this)" style="font-size:15px;padding:8px 10px;"></div>
+      <div><input type="text" class="rep-note" placeholder="note" value="${existing&&existing.notes&&existing.notes[i-1]||''}" style="font-size:15px;padding:8px 10px;"></div>`;
+    container.appendChild(row);
+  }
+}
+
+function updateRepSummary(input){
+  const block=input.closest('.interval-block');
+  const times=Array.from(block.querySelectorAll('.rep-time')).map(i=>parseTime(i.value)).filter(t=>t!=null);
+  const sumEl=block.querySelector('.rep-summary');
+  if(times.length<1){sumEl.style.display='none';return;}
+  const avg=Math.round(times.reduce((a,b)=>a+b,0)/times.length);
+  const best=Math.min(...times), worst=Math.max(...times);
+  sumEl.style.display='flex';
+  sumEl.innerHTML=`<span>Avg <b>${fmtTime(avg)}</b></span><span>Best <b class="best">${fmtTime(best)}</b></span><span>Worst <b class="worst">${fmtTime(worst)}</b></span>`;
+}
+
+function collectIntervalBlocks(){
+  const blocks=[];
+  document.querySelectorAll('#intervals-container .interval-block').forEach(b=>{
+    const reps=parseInt(b.querySelector('.iv-reps').value)||1;
+    const dist=parseInt(b.querySelector('.iv-dist').value)||0;
+    const recoveryBtn=b.querySelector('.recovery-btn.active');
+    const recovery=recoveryBtn?recoveryBtn.textContent.trim().includes('Jog')?'jog':'standing':'standing';
+    const recoveryTime=parseTime(b.querySelector('.iv-recovery-time').value);
+    const repTimes=Array.from(b.querySelectorAll('.rep-time')).map(i=>parseTime(i.value));
+    const repNotes=Array.from(b.querySelectorAll('.rep-note')).map(i=>i.value.trim());
+    blocks.push({reps,dist,recovery,recoveryTime,repTimes,repNotes});
+  });
+  return blocks;
 }
 
 // ── SAVE RUN ──────────────────────────────────────────────────────────────────
@@ -622,11 +733,11 @@ function saveRun(){
   } else {
     run.warmup=parseFloat(document.getElementById('run-warmup').value)||0;
     run.cooldown=parseFloat(document.getElementById('run-cooldown').value)||0;
-    const ivs=[];
-    document.querySelectorAll('#intervals-container .interval-block').forEach(b=>{
-      ivs.push({reps:parseInt(b.querySelector('.iv-reps').value)||1,dist:parseInt(b.querySelector('.iv-dist').value)||0,target:b.querySelector('.iv-target').value.trim(),actual:b.querySelector('.iv-actual').value.trim(),rest:parseFloat(b.querySelector('.iv-rest').value)||0});
-    });
-    run.intervals=ivs;
+    run.intervals=collectIntervalBlocks();
+    // Auto-calc total distance from reps × distance if not manually set
+    if(!run.dist&&run.intervals.length){
+      run.dist=parseFloat(run.intervals.reduce((s,iv)=>s+(iv.dist*iv.reps/1000),0).toFixed(2))||0;
+    }
   }
   runs.unshift(run); saveRuns();
   // Reset
@@ -634,6 +745,7 @@ function saveRun(){
   document.getElementById('run-notes').value='';
   document.getElementById('run-route-select').value='';
   document.getElementById('intervals-container').innerHTML='';
+  ivc=0;
   clearLog(); setRouteMode('saved'); setRunType('easy');
   switchTab('dash');
 }
@@ -841,7 +953,7 @@ function renderDash(){
         ${r.dist?`<span>${r.dist} km</span>`:''}
         ${r.pace?`<span>${fmtPace(r.pace)}/km</span>`:''}
         ${r.type==='interval'?'<span class="badge interval">Intervals</span>':''}
-        ${r.type==='tempo'?'<span class="badge">Tempo</span>':''}
+        ${r.type==='tempo'?'<span class="badge">Hard</span>':''}
       </div>
     </div>`).join('');
 }
@@ -861,16 +973,34 @@ function showRunDetail(id){
   document.getElementById('detail-title').textContent=r.routeName||'Run';
   let html=`
     <div class="detail-row"><span class="detail-key">Date</span><span>${fmtDate(r.date)}</span></div>
-    <div class="detail-row"><span class="detail-key">Type</span><span style="text-transform:capitalize">${r.type}</span></div>
+    <div class="detail-row"><span class="detail-key">Type</span><span>${r.type==='easy'?'Steady':r.type==='tempo'?'Hard':r.type.charAt(0).toUpperCase()+r.type.slice(1)}</span></div>
     ${r.dist?`<div class="detail-row"><span class="detail-key">Distance</span><span>${r.dist} km</span></div>`:''}
     ${r.time?`<div class="detail-row"><span class="detail-key">Time</span><span>${r.time} min</span></div>`:''}
     ${r.pace?`<div class="detail-row"><span class="detail-key">Pace</span><span>${fmtPace(r.pace)} /km</span></div>`:''}
     ${r.notes?`<div style="margin-top:12px;font-size:14px;color:var(--muted)">${r.notes}</div>`:''}`;
   if(r.type==='interval'&&r.intervals?.length){
-    html+=`<div style="margin-top:14px"><div class="section-title" style="margin-bottom:8px">Intervals</div>
-      <table class="interval-table"><tr><th>Reps</th><th>Dist</th><th>Target</th><th>Actual</th><th>Rest</th></tr>
-      ${r.intervals.map(iv=>`<tr><td>${iv.reps}</td><td>${iv.dist}m</td><td>${iv.target||'—'}</td><td>${iv.actual||'—'}</td><td>${iv.rest}m</td></tr>`).join('')}
-      </table></div>`;
+    html+=`<div style="margin-top:14px"><div class="section-title" style="margin-bottom:8px">Intervals</div>`;
+    if(r.warmup) html+=`<div class="detail-row"><span class="detail-key">Warmup</span><span>${r.warmup} min</span></div>`;
+    r.intervals.forEach((iv,bi)=>{
+      const times=(iv.repTimes||[]).filter(t=>t!=null);
+      const avg=times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null;
+      const best=times.length?Math.min(...times):null;
+      const worst=times.length?Math.max(...times):null;
+      html+=`<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:8px;">
+        <div style="font-family:'Barlow Condensed';font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Block ${bi+1} · ${iv.dist?iv.dist+'m · ':''}${iv.reps} reps · ${iv.recovery==='jog'?'Jog back':'Standing rest'}</div>`;
+      if(iv.repTimes&&iv.repTimes.length){
+        html+=`<table class="interval-table"><tr><th>#</th><th>Time</th><th>Note</th></tr>`;
+        iv.repTimes.forEach((t,i)=>{
+          html+=`<tr><td>${i+1}</td><td>${fmtTime(t)}</td><td style="color:var(--muted)">${iv.repNotes&&iv.repNotes[i]||''}</td></tr>`;
+        });
+        html+=`</table>`;
+      }
+      if(avg!=null) html+=`<div class="rep-summary" style="margin-top:6px"><span>Avg <b>${fmtTime(avg)}</b></span><span>Best <b class="best">${fmtTime(best)}</b></span><span>Worst <b class="worst">${fmtTime(worst)}</b></span></div>`;
+      if(iv.recoveryTime!=null) html+=`<div style="font-size:12px;color:var(--muted);margin-top:4px">Recovery: ${fmtTime(iv.recoveryTime)}</div>`;
+      html+=`</div>`;
+    });
+    if(r.cooldown) html+=`<div class="detail-row"><span class="detail-key">Warmdown</span><span>${r.cooldown} min</span></div>`;
+    html+=`</div>`;
   }
   // Show map placeholder if we have points
   if(latlngs.length>0) html+=`<div style="margin-top:14px"><div id="map-run-detail" style="width:100%;height:220px;border-radius:8px;border:1px solid var(--border);"></div></div>`;
@@ -944,36 +1074,27 @@ function showRunDetail(id){
 function openEditRun(id){
   const r=runs.find(r=>r.id===id); if(!r) return;
   closeModal('run-detail-modal');
-
-  // Populate edit form
   document.getElementById('edit-run-id').value=id;
   document.getElementById('edit-date').value=r.date;
   document.getElementById('edit-dist').value=r.dist||'';
-  document.getElementById('edit-dist-iv').value=r.dist||'';
   document.getElementById('edit-time').value=r.time||'';
   document.getElementById('edit-notes').value=r.notes||'';
   document.getElementById('edit-route-name').textContent=r.routeName||'Custom';
-
-  // Type toggle
   ['easy','tempo','interval'].forEach((t,i)=>{
     document.querySelectorAll('#edit-type-toggle .toggle-btn')[i].classList.toggle('active',r.type===t);
   });
   editRunType=r.type;
   document.getElementById('edit-simple-ui').style.display=r.type!=='interval'?'':'none';
   document.getElementById('edit-interval-ui').style.display=r.type==='interval'?'':'none';
-
-  // Pace display
   updateEditPace();
-
   // Intervals
   const ic=document.getElementById('edit-intervals-container');
-  ic.innerHTML='';
-  if(r.type==='interval'&&r.intervals){
-    r.intervals.forEach((iv,i)=>{
-      ic.appendChild(makeEditInterval(i+1,iv));
-    });
+  ic.innerHTML=''; editIvc=0;
+  if(r.type==='interval'&&r.intervals&&r.intervals.length){
+    r.intervals.forEach(iv=>addEditIntervalBlock(iv));
   }
-
+  document.getElementById('edit-warmup').value=r.warmup||'';
+  document.getElementById('edit-cooldown').value=r.cooldown||'';
   document.getElementById('edit-run-modal').classList.add('open');
 }
 
@@ -992,25 +1113,39 @@ function updateEditPace(){
 }
 
 let editIvc=0;
-function makeEditInterval(num,iv){
-  editIvc++; const id='eiv-'+editIvc;
-  const el=document.createElement('div'); el.className='interval-block'; el.id=id;
-  el.innerHTML=`<button class="remove-btn" onclick="document.getElementById('${id}').remove()">×</button>
-    <div style="font-family:'Barlow Condensed';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Rep ${num}</div>
+function addEditIntervalBlock(ivData){
+  editIvc++;
+  const bid='eivb-'+editIvc;
+  const reps=ivData?ivData.reps:3;
+  const recovery=ivData?ivData.recovery:'standing';
+  const dist=ivData?ivData.dist:'';
+  const el=document.createElement('div');
+  el.className='interval-block'; el.id=bid;
+  el.innerHTML=`
+    <button class="remove-btn" onclick="document.getElementById('${bid}').remove()">×</button>
+    <div class="block-header">Block ${editIvc}</div>
     <div class="row-2">
-      <div class="form-group" style="margin-bottom:8px"><label>Reps</label><input type="number" class="iv-reps" min="1" value="${iv?.reps||1}" inputmode="numeric"></div>
-      <div class="form-group" style="margin-bottom:8px"><label>Dist (m)</label><input type="number" class="iv-dist" value="${iv?.dist||''}" placeholder="400" inputmode="numeric"></div>
+      <div class="form-group" style="margin-bottom:10px"><label>Distance (m)</label><input type="number" class="iv-dist" value="${dist}" placeholder="e.g. 400" inputmode="numeric"></div>
+      <div class="form-group" style="margin-bottom:10px"><label>Reps</label><input type="number" class="iv-reps" min="1" value="${reps}" inputmode="numeric" onchange="rebuildRepRows(this)"></div>
     </div>
-    <div class="row-2">
-      <div class="form-group" style="margin-bottom:8px"><label>Target</label><input type="text" class="iv-target" value="${iv?.target||''}" placeholder="mm:ss"></div>
-      <div class="form-group" style="margin-bottom:8px"><label>Actual</label><input type="text" class="iv-actual" value="${iv?.actual||''}" placeholder="mm:ss"></div>
+    <label style="margin-bottom:6px">Recovery</label>
+    <div class="recovery-toggle">
+      <button class="recovery-btn ${recovery==='standing'?'active':''}" onclick="setRecovery(this,'standing')">Standing rest</button>
+      <button class="recovery-btn ${recovery==='jog'?'active':''}" onclick="setRecovery(this,'jog')">Jog back</button>
     </div>
-    <div class="form-group" style="margin-bottom:0"><label>Rest (min)</label><input type="number" class="iv-rest" value="${iv?.rest||''}" placeholder="2" inputmode="decimal"></div>`;
-  return el;
-}
-
-function addEditInterval(){
-  document.getElementById('edit-intervals-container').appendChild(makeEditInterval(++editIvc,null));
+    <div class="row-2" style="margin-bottom:10px">
+      <div class="form-group" style="margin-bottom:0"><label>Recovery time</label><input type="text" class="iv-recovery-time" placeholder="e.g. 90 or 2:00" value="${ivData?fmtTime(ivData.recoveryTime)||'':''}"></div>
+      <div></div>
+    </div>
+    <label style="margin-bottom:6px">Rep Times <span style="color:var(--muted);font-size:10px;letter-spacing:0;text-transform:none;font-family:'Barlow',sans-serif">(e.g. 45 or 1:23)</span></label>
+    <div class="rep-rows"></div>
+    <div class="rep-summary" style="display:none"></div>`;
+  document.getElementById('edit-intervals-container').appendChild(el);
+  buildRepRows(el, reps, ivData?ivData.repTimes:[]);
+  // Restore rep notes
+  if(ivData&&ivData.repNotes){
+    el.querySelectorAll('.rep-note').forEach((n,i)=>{ n.value=ivData.repNotes[i]||''; });
+  }
 }
 
 function saveEditRun(){
@@ -1018,21 +1153,29 @@ function saveEditRun(){
   const idx=runs.findIndex(r=>r.id===id); if(idx<0) return;
   const r=runs[idx];
   r.date=document.getElementById('edit-date').value||r.date;
-  r.dist=parseFloat(document.getElementById(editRunType==='interval'?'edit-dist-iv':'edit-dist').value)||r.dist;
   r.notes=document.getElementById('edit-notes').value.trim();
   r.type=editRunType;
   if(editRunType!=='interval'){
+    r.dist=parseFloat(document.getElementById('edit-dist').value)||r.dist;
     const time=parseFloat(document.getElementById('edit-time').value)||0;
     r.time=time;
     r.pace=r.dist>0&&time>0?(time/r.dist).toFixed(2):null;
   } else {
     r.warmup=parseFloat(document.getElementById('edit-warmup').value)||0;
     r.cooldown=parseFloat(document.getElementById('edit-cooldown').value)||0;
-    const ivs=[];
+    r.intervals=[];
     document.querySelectorAll('#edit-intervals-container .interval-block').forEach(b=>{
-      ivs.push({reps:parseInt(b.querySelector('.iv-reps').value)||1,dist:parseInt(b.querySelector('.iv-dist').value)||0,target:b.querySelector('.iv-target').value.trim(),actual:b.querySelector('.iv-actual').value.trim(),rest:parseFloat(b.querySelector('.iv-rest').value)||0});
+      const reps=parseInt(b.querySelector('.iv-reps').value)||1;
+      const dist=parseInt(b.querySelector('.iv-dist').value)||0;
+      const recoveryBtn=b.querySelector('.recovery-btn.active');
+      const recovery=recoveryBtn&&recoveryBtn.textContent.includes('Jog')?'jog':'standing';
+      const recoveryTime=parseTime(b.querySelector('.iv-recovery-time').value);
+      const repTimes=Array.from(b.querySelectorAll('.rep-time')).map(i=>parseTime(i.value));
+      const repNotes=Array.from(b.querySelectorAll('.rep-note')).map(i=>i.value.trim());
+      r.intervals.push({reps,dist,recovery,recoveryTime,repTimes,repNotes});
     });
-    r.intervals=ivs;
+    // recalc total dist from interval blocks
+    r.dist=r.intervals.reduce((s,iv)=>s+(iv.dist*iv.reps/1000),0)||r.dist;
   }
   runs[idx]=r; saveRuns();
   closeModal('edit-run-modal'); renderDash();
