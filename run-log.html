@@ -134,7 +134,7 @@ textarea{resize:none;min-height:72px;}
 <body>
 
 <header>
-  <div class="logo">STR<span>IDE</span><small>v23</small></div>
+  <div class="logo">STR<span>IDE</span><small>v24</small></div>
   <button onclick="openModal('data-modal')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;font-size:20px;line-height:1;" title="Data">⚙</button>
 </header>
 
@@ -211,8 +211,13 @@ textarea{resize:none;min-height:72px;}
           <div class="form-group"><label>Warmup (min)</label><input type="number" id="run-warmup" min="0" placeholder="0" inputmode="numeric"></div>
           <div class="form-group"><label>Warmdown (min)</label><input type="number" id="run-cooldown" min="0" placeholder="0" inputmode="numeric"></div>
         </div>
+
+        <div class="section-title" style="margin-bottom:8px">Segments</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">Draw each interval segment on the map, then assign them to blocks below.</p>
+        <div id="session-segments-list" style="margin-bottom:8px"></div>
+        <button class="add-interval-btn" style="margin-bottom:14px" onclick="openDrawSegmentModal()">+ Draw Segment</button>
+
         <div class="section-title" style="margin-bottom:10px">Interval Blocks</div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">Each block is one set of reps at the same distance. Add multiple blocks for mixed-distance sessions.</p>
         <div id="intervals-container"></div>
         <button class="add-interval-btn" onclick="addIntervalBlock()">+ Add Interval Block</button>
       </div>
@@ -579,6 +584,8 @@ function setRunType(type){
   document.getElementById('simple-run-ui').style.display=type!=='interval'?'':'none';
   document.getElementById('interval-run-ui').style.display=type==='interval'?'':'none';
   if(type==='interval'&&document.getElementById('intervals-container').children.length===0){
+    sessionSegments=[];
+    renderSessionSegments();
     addIntervalBlock(null);
   }
 }
@@ -608,7 +615,195 @@ function fmtTime(secs){
   return `${m}:${s.toString().padStart(2,'0')}`;
 }
 
-// ── INTERVAL BLOCKS ───────────────────────────────────────────────────────────
+// ── SESSION SEGMENTS ──────────────────────────────────────────────────────────
+// Segments are per-session only (not saved to routes library unless explicit)
+let sessionSegments = []; // [{id, name, latlngs, distanceM}]
+let mapSeg=null, segPolyline=null, segMarkers=[], segLatLngs=[], segDrawing=false;
+
+function openDrawSegmentModal(){
+  document.getElementById('seg-name').value='';
+  document.getElementById('seg-hint').innerHTML='Tap <b>Draw</b> then tap the map to plot the segment';
+  document.getElementById('seg-draw-banner').style.display='none';
+  document.getElementById('finish-seg-btn').style.display='none';
+  segLatLngs=[]; segDrawing=false;
+  document.getElementById('seg-draw-btn').style.borderColor='';
+  document.getElementById('seg-draw-btn').style.color='';
+  document.getElementById('draw-segment-modal').classList.add('open');
+  setTimeout(()=>{
+    if(!mapSeg){
+      mapSeg=L.map('map-seg',{zoomControl:true,attributionControl:true}).setView([DEFAULT_LAT,DEFAULT_LNG],14);
+      L.tileLayer(TILE,{attribution:ATTR,maxZoom:19}).addTo(mapSeg);
+      mapSeg.on('click',function(e){ if(!segDrawing) return; addSegPoint(e.latlng); });
+    }
+    mapSeg.invalidateSize();
+    // Clear previous drawing
+    segMarkers.forEach(m=>mapSeg.removeLayer(m)); segMarkers=[];
+    if(segPolyline){mapSeg.removeLayer(segPolyline);segPolyline=null;}
+    segLatLngs=[];
+  },300);
+}
+
+function toggleSegDraw(){
+  segDrawing=!segDrawing;
+  const btn=document.getElementById('seg-draw-btn');
+  const banner=document.getElementById('seg-draw-banner');
+  if(segDrawing){
+    btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)';
+    banner.style.display='block'; mapSeg.getContainer().style.cursor='crosshair';
+    document.getElementById('seg-hint').innerHTML='Tap map to plot points &nbsp;·&nbsp; tap <b>✓ Finish</b> when done';
+  } else {
+    btn.style.borderColor=''; btn.style.color='';
+    banner.style.display='none'; mapSeg.getContainer().style.cursor='';
+  }
+}
+
+function addSegPoint(latlng){
+  const isFirst=segLatLngs.length===0;
+  segLatLngs.push(latlng);
+  const m=L.marker(latlng,{icon:isFirst?startIcon():dotIcon('#b8f04a'),interactive:false}).addTo(mapSeg);
+  segMarkers.push(m);
+  if(segPolyline) mapSeg.removeLayer(segPolyline);
+  if(segLatLngs.length>1){
+    segPolyline=L.polyline(segLatLngs,{color:'#b8f04a',weight:3,opacity:.9}).addTo(mapSeg);
+    const d=Math.round(totalDistance(segLatLngs));
+    document.getElementById('seg-hint').innerHTML=`${segLatLngs.length} points · <b>${d}m</b> — tap <b>✓ Finish</b> or keep plotting`;
+    document.getElementById('finish-seg-btn').style.display='inline-block';
+  }
+}
+
+function undoSegPoint(){
+  if(!segLatLngs.length) return;
+  segLatLngs.pop();
+  const m=segMarkers.pop(); if(m) mapSeg.removeLayer(m);
+  if(segPolyline){mapSeg.removeLayer(segPolyline);segPolyline=null;}
+  if(segLatLngs.length>1) segPolyline=L.polyline(segLatLngs,{color:'#b8f04a',weight:3}).addTo(mapSeg);
+  document.getElementById('finish-seg-btn').style.display=segLatLngs.length>=2?'inline-block':'none';
+  if(segLatLngs.length<2) document.getElementById('seg-hint').innerHTML='Keep tapping to plot points';
+}
+
+function clearSegPoints(){
+  segLatLngs=[];
+  segMarkers.forEach(m=>mapSeg.removeLayer(m)); segMarkers=[];
+  if(segPolyline){mapSeg.removeLayer(segPolyline);segPolyline=null;}
+  segDrawing=false;
+  document.getElementById('seg-draw-btn').style.borderColor='';
+  document.getElementById('seg-draw-btn').style.color='';
+  document.getElementById('seg-draw-banner').style.display='none';
+  document.getElementById('finish-seg-btn').style.display='none';
+  document.getElementById('seg-hint').innerHTML='Tap <b>Draw</b> then tap the map to plot the segment';
+}
+
+function finishSegment(){
+  segDrawing=false;
+  document.getElementById('seg-draw-btn').style.borderColor='';
+  document.getElementById('seg-draw-btn').style.color='';
+  document.getElementById('seg-draw-banner').style.display='none';
+  document.getElementById('finish-seg-btn').style.display='none';
+  if(mapSeg) mapSeg.getContainer().style.cursor='';
+  const d=Math.round(totalDistance(segLatLngs));
+  document.getElementById('seg-hint').innerHTML=`Segment complete · <b>${d}m</b>`;
+}
+
+function saveSegment(){
+  const name=document.getElementById('seg-name').value.trim()||('Segment '+(sessionSegments.length+1));
+  if(segLatLngs.length<2){ alert('Plot at least 2 points first.'); return; }
+  const distM=Math.round(totalDistance(segLatLngs));
+  const seg={
+    id:'seg-'+Date.now(),
+    name,
+    distanceM: distM,
+    latlngs: segLatLngs.map(ll=>({lat:ll.lat,lng:ll.lng}))
+  };
+  sessionSegments.push(seg);
+  renderSessionSegments();
+  updateAllBlockSegmentDropdowns();
+  closeModal('draw-segment-modal');
+}
+
+async function searchSegMap(){
+  const q=document.getElementById('seg-map-search').value.trim(); if(!q) return;
+  const loc=await geocode(q);
+  if(loc) mapSeg.setView([loc.lat,loc.lng],15);
+  else alert('Location not found.');
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const si=document.getElementById('seg-map-search');
+  if(si) si.addEventListener('keydown',e=>{ if(e.key==='Enter') searchSegMap(); });
+});
+
+function renderSessionSegments(){
+  const el=document.getElementById('session-segments-list');
+  if(!sessionSegments.length){ el.innerHTML=''; return; }
+  el.innerHTML=sessionSegments.map(s=>`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;">
+      <div style="flex:1">
+        <div style="font-family:'Barlow Condensed';font-size:14px;font-weight:600">${s.name}</div>
+        <div style="font-size:12px;color:var(--muted)">${s.distanceM}m · ${s.latlngs.length} points</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteSessionSegment('${s.id}')">✕</button>
+    </div>`).join('');
+}
+
+function deleteSessionSegment(id){
+  sessionSegments=sessionSegments.filter(s=>s.id!==id);
+  renderSessionSegments();
+  updateAllBlockSegmentDropdowns();
+}
+
+function updateAllBlockSegmentDropdowns(){
+  document.querySelectorAll('.iv-segment-select').forEach(sel=>{
+    const current=sel.value;
+    populateSegmentDropdown(sel);
+    sel.value=current; // restore selection if still valid
+  });
+  // Recalculate distances for all blocks
+  document.querySelectorAll('#intervals-container .interval-block').forEach(b=>updateBlockDistance(b));
+}
+
+function populateSegmentDropdown(sel){
+  const current=sel.value;
+  sel.innerHTML='<option value="manual">Manual distance</option>'+
+    sessionSegments.map(s=>`<option value="${s.id}">${s.name} (${s.distanceM}m)</option>`).join('');
+  if(current) sel.value=current;
+}
+
+function onSegmentSelected(sel){
+  const block=sel.closest('.interval-block');
+  const distInput=block.querySelector('.iv-dist');
+  if(sel.value==='manual'){
+    distInput.removeAttribute('readonly'); distInput.style.opacity='';
+  } else {
+    const seg=sessionSegments.find(s=>s.id===sel.value);
+    if(seg){ distInput.value=seg.distanceM; distInput.setAttribute('readonly',''); distInput.style.opacity='.6'; }
+  }
+  updateBlockDistance(block);
+}
+
+function updateBlockDistance(block){
+  const reps=parseInt(block.querySelector('.iv-reps').value)||0;
+  const dist=parseInt(block.querySelector('.iv-dist').value)||0;
+  const isJog=block.querySelector('.recovery-btn.active')?.textContent.includes('Jog');
+  const totalM=reps * dist * (isJog?2:1);
+  const totalKm=(totalM/1000).toFixed(2);
+  const distSummary=block.querySelector('.iv-dist-summary');
+  if(distSummary) distSummary.textContent=totalM>0?`Block total: ${totalKm} km`:'';
+  recalcSessionTotal();
+}
+
+function recalcSessionTotal(){
+  let total=0;
+  document.querySelectorAll('#intervals-container .interval-block').forEach(b=>{
+    const reps=parseInt(b.querySelector('.iv-reps').value)||0;
+    const dist=parseInt(b.querySelector('.iv-dist').value)||0;
+    const isJog=b.querySelector('.recovery-btn.active')?.textContent.includes('Jog');
+    total+=reps*dist*(isJog?2:1);
+  });
+  const km=(total/1000).toFixed(2);
+  const el=document.getElementById('run-dist');
+  if(total>0){ el.value=km; }
+}
+
+
 let ivc=0;
 
 function addIntervalBlock(ivData){
@@ -617,40 +812,69 @@ function addIntervalBlock(ivData){
   const reps=ivData?ivData.reps:3;
   const recovery=ivData?ivData.recovery:'standing';
   const dist=ivData?ivData.dist:'';
+  const segId=ivData?ivData.segmentId||'manual':'manual';
 
   const el=document.createElement('div');
   el.className='interval-block'; el.id=bid;
   el.innerHTML=`
-    <button class="remove-btn" onclick="document.getElementById('${bid}').remove()">×</button>
+    <button class="remove-btn" onclick="document.getElementById('${bid}').remove();recalcSessionTotal()">×</button>
     <div class="block-header">Block ${ivc}</div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Segment</label>
+      <select class="iv-segment-select" onchange="onSegmentSelected(this)" style="font-size:15px;padding:10px 12px">
+        <option value="manual">Manual distance</option>
+      </select>
+    </div>
+
     <div class="row-2">
       <div class="form-group" style="margin-bottom:10px">
         <label>Distance (m)</label>
-        <input type="number" class="iv-dist" value="${dist}" placeholder="e.g. 400" inputmode="numeric">
+        <input type="number" class="iv-dist" value="${dist}" placeholder="e.g. 400" inputmode="numeric" oninput="updateBlockDistance(this.closest('.interval-block'))">
       </div>
       <div class="form-group" style="margin-bottom:10px">
         <label>Reps</label>
-        <input type="number" class="iv-reps" min="1" value="${reps}" inputmode="numeric" onchange="rebuildRepRows(this)">
+        <input type="number" class="iv-reps" min="1" value="${reps}" inputmode="numeric"
+          onchange="rebuildRepRows(this);updateBlockDistance(this.closest('.interval-block'))">
       </div>
     </div>
+
     <label style="margin-bottom:6px">Recovery</label>
     <div class="recovery-toggle">
-      <button class="recovery-btn ${recovery==='standing'?'active':''}" onclick="setRecovery(this,'standing')">Standing rest</button>
-      <button class="recovery-btn ${recovery==='jog'?'active':''}" onclick="setRecovery(this,'jog')">Jog back</button>
+      <button class="recovery-btn ${recovery==='standing'?'active':''}"
+        onclick="setRecovery(this,'standing');updateBlockDistance(this.closest('.interval-block'))">Standing rest</button>
+      <button class="recovery-btn ${recovery==='jog'?'active':''}"
+        onclick="setRecovery(this,'jog');updateBlockDistance(this.closest('.interval-block'))">Jog back</button>
     </div>
     <div class="row-2" style="margin-bottom:10px">
       <div class="form-group" style="margin-bottom:0">
         <label>Recovery time</label>
-        <input type="text" class="iv-recovery-time" placeholder="e.g. 90 or 2:00" value="${ivData?ivData.recoveryTime||'':''}">
+        <input type="text" class="iv-recovery-time" placeholder="e.g. 90 or 2:00" value="${ivData?fmtTime(ivData.recoveryTime)||'':''}">
       </div>
       <div></div>
     </div>
+    <div class="iv-dist-summary" style="font-size:12px;color:var(--accent2);margin-bottom:10px;font-family:'Barlow Condensed';letter-spacing:1px"></div>
+
     <label style="margin-bottom:6px">Rep Times <span style="color:var(--muted);font-size:10px;letter-spacing:0;text-transform:none;font-family:'Barlow',sans-serif">(e.g. 45 or 1:23)</span></label>
     <div class="rep-rows"></div>
     <div class="rep-summary" style="display:none"></div>`;
 
   document.getElementById('intervals-container').appendChild(el);
+
+  // Populate segment dropdown and restore selection
+  const sel=el.querySelector('.iv-segment-select');
+  populateSegmentDropdown(sel);
+  sel.value=segId;
+
+  // Lock dist field if a segment is selected
+  const distInput=el.querySelector('.iv-dist');
+  if(segId!=='manual'){
+    const seg=sessionSegments.find(s=>s.id===segId);
+    if(seg){ distInput.value=seg.distanceM; distInput.setAttribute('readonly',''); distInput.style.opacity='.6'; }
+  }
+
   buildRepRows(el, reps, ivData?ivData.repTimes:[]);
+  updateBlockDistance(el);
   return el;
 }
 
@@ -702,7 +926,10 @@ function collectIntervalBlocks(){
     const recoveryTime=parseTime(b.querySelector('.iv-recovery-time').value);
     const repTimes=Array.from(b.querySelectorAll('.rep-time')).map(i=>parseTime(i.value));
     const repNotes=Array.from(b.querySelectorAll('.rep-note')).map(i=>i.value.trim());
-    blocks.push({reps,dist,recovery,recoveryTime,repTimes,repNotes});
+    const segSel=b.querySelector('.iv-segment-select');
+    const segmentId=segSel&&segSel.value!=='manual'?segSel.value:null;
+    const seg=segmentId?sessionSegments.find(s=>s.id===segmentId):null;
+    blocks.push({reps,dist,recovery,recoveryTime,repTimes,repNotes,segmentId,segmentName:seg?seg.name:null});
   });
   return blocks;
 }
@@ -745,6 +972,8 @@ function saveRun(){
   document.getElementById('run-notes').value='';
   document.getElementById('run-route-select').value='';
   document.getElementById('intervals-container').innerHTML='';
+  document.getElementById('session-segments-list').innerHTML='';
+  sessionSegments=[];
   ivc=0;
   clearLog(); setRouteMode('saved'); setRunType('easy');
   switchTab('dash');
@@ -1298,6 +1527,31 @@ if ('serviceWorker' in navigator) {
 
     <div class="modal-actions" style="margin-top:20px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeModal('data-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRAW SEGMENT MODAL -->
+<div class="modal-overlay" id="draw-segment-modal">
+  <div class="modal">
+    <div class="modal-title">Draw Segment</div>
+    <div class="form-group"><label>Segment Name</label><input type="text" id="seg-name" placeholder="e.g. Hill, Long loop"></div>
+    <div class="map-search-row" style="margin-bottom:8px">
+      <input type="text" id="seg-map-search" placeholder="Search location…">
+      <button class="btn btn-secondary btn-sm" onclick="searchSegMap()">Go</button>
+    </div>
+    <div class="map-wrap" style="height:260px;margin-bottom:8px"><div id="map-seg" style="width:100%;height:260px"></div></div>
+    <div class="draw-active-banner" id="seg-draw-banner" style="display:none">✏ Drawing — tap map to plot points</div>
+    <div class="map-toolbar" style="margin-bottom:6px">
+      <button class="btn btn-secondary btn-sm" id="seg-draw-btn" onclick="toggleSegDraw()">✏ Draw</button>
+      <button class="btn btn-secondary btn-sm" onclick="undoSegPoint()">↩ Undo</button>
+      <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="clearSegPoints()">✕ Clear</button>
+      <button class="btn btn-primary btn-sm" id="finish-seg-btn" style="display:none" onclick="finishSegment()">✓ Finish</button>
+    </div>
+    <div class="map-hint" id="seg-hint">Tap <b>Draw</b> then tap the map to plot the segment</div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="saveSegment()">Save Segment</button>
+      <button class="btn btn-secondary" onclick="closeModal('draw-segment-modal')">Cancel</button>
     </div>
   </div>
 </div>

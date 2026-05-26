@@ -1,4 +1,4 @@
-const CACHE = 'stride-v3';
+const CACHE = 'stride-v4';
 
 // Files to cache on install (app shell)
 const PRECACHE = [
