@@ -122,7 +122,8 @@ textarea{resize:none;min-height:72px;}
 <body>
 
 <header>
-  <div class="logo">STR<span>IDE</span><small>v20</small></div>
+  <div class="logo">STR<span>IDE</span><small>v21</small></div>
+  <button onclick="openModal('data-modal')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:8px;font-size:20px;line-height:1;" title="Data">⚙</button>
 </header>
 
 <main>
@@ -1037,7 +1038,59 @@ function saveEditRun(){
   closeModal('edit-run-modal'); renderDash();
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+function exportData(){
+  const data={ runs, routes, exported: new Date().toISOString() };
+  const json=JSON.stringify(data, null, 2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='stride-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      let runsAdded=0, routesAdded=0;
+
+      if(Array.isArray(data.runs)){
+        data.runs.forEach(r=>{
+          if(!runs.find(x=>x.id===r.id)){ runs.push(r); runsAdded++; }
+        });
+        saveRuns();
+      }
+      if(Array.isArray(data.routes)){
+        data.routes.forEach(r=>{
+          if(!routes.find(x=>x.id===r.id)){ routes.push(r); routesAdded++; }
+        });
+        saveRoutes();
+      }
+
+      const status=document.getElementById('import-status');
+      status.style.display='';
+      status.textContent=`✓ Imported ${runsAdded} run${runsAdded!==1?'s':''} and ${routesAdded} route${routesAdded!==1?'s':''}`;
+      renderDash();
+      // Reset file input so same file can be re-imported if needed
+      event.target.value='';
+    } catch(err){
+      const status=document.getElementById('import-status');
+      status.style.display='';
+      status.style.color='var(--danger)';
+      status.textContent='✕ Invalid file — please use a Stride export file';
+    }
+  };
+  reader.readAsText(file);
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
 document.getElementById('run-date').value=new Date().toISOString().slice(0,10);
 ['run-time','run-dist'].forEach(id=>{
   document.getElementById(id).addEventListener('input',()=>{
@@ -1084,5 +1137,27 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<!-- DATA MODAL -->
+<div class="modal-overlay" id="data-modal">
+  <div class="modal">
+    <div class="modal-title">Data</div>
+
+    <div class="section-title" style="margin-bottom:12px">Export</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Save all your runs and routes as a backup file. Use this to transfer data to a new device or browser.</p>
+    <button class="btn btn-secondary" onclick="exportData()">⬇ Export Data</button>
+
+    <div style="height:20px"></div>
+    <div class="section-title" style="margin-bottom:12px">Import</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Restore from a previously exported file. This will <span style="color:var(--warn)">merge</span> with any existing data.</p>
+    <label for="import-file" class="btn btn-secondary" style="text-align:center;cursor:pointer">⬆ Import Data</label>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <div id="import-status" style="font-size:13px;margin-top:10px;color:var(--accent2);display:none"></div>
+
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal('data-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
