@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stride">
+<meta name="theme-color" content="#0d0f0e">
+<link rel="manifest" href="manifest.json">
+<title>Stride</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f0e;--surface:#161a18;--surface2:#1e2421;
+  --border:#2a302d;--accent:#b8f04a;--accent2:#4af0b8;
+  --text:#e8ede9;--muted:#6b7a6e;--danger:#f04a4a;--warn:#f0c44a;
+  --nav-h:56px;--tab-h:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+header{height:var(--nav-h);display:flex;align-items:center;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+.logo{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:4px;text-transform:uppercase;color:var(--accent);}
+.logo span{color:var(--text);}
+.logo small{font-size:10px;letter-spacing:1px;opacity:.4;margin-left:4px;}
+
+.tab-bar{height:var(--tab-h);display:flex;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;}
+.tab-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.tab-btn.active{color:var(--accent);}
+
+main{flex:1;overflow:hidden;position:relative;min-height:0;}
+.panel{display:none;position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.panel.active{display:block;}
+
+.page-pad{padding:16px;}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.form-group{margin-bottom:14px;}
+label{display:block;font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'Barlow',sans-serif;font-size:16px;padding:11px 12px;outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+select option{background:var(--surface2);}
+textarea{resize:none;min-height:72px;}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:2px;text-transform:uppercase;border:none;border-radius:8px;padding:13px 20px;cursor:pointer;transition:all .15s;display:block;width:100%;text-align:center;}
+.btn-primary{background:var(--accent);color:var(--bg);}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto;display:inline-block;}
+.toggle-group{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;}
+.toggle-btn{flex:1;background:none;border:none;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;padding:10px 4px;cursor:pointer;transition:all .15s;}
+.toggle-btn.active{background:var(--accent);color:var(--bg);}
+.empty{text-align:center;color:var(--muted);padding:48px 20px;font-size:14px;line-height:1.7;}
+.empty-icon{font-size:36px;margin-bottom:12px;display:block;}
+
+/* DASHBOARD */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.stat-label{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.stat-value{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:600;color:var(--accent);line-height:1;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:70px;margin-bottom:6px;}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;}
+.bar-col{flex:1;display:flex;align-items:flex-end;width:100%;}
+.bar{width:100%;background:var(--accent);border-radius:3px 3px 0 0;opacity:.75;min-height:2px;}
+.bar-label{font-family:'Barlow Condensed',sans-serif;font-size:9px;color:var(--muted);}
+.run-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+.run-date{font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--muted);min-width:54px;}
+.run-route{font-weight:500;flex:1;font-size:14px;}
+.run-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-family:'Barlow Condensed',sans-serif;font-size:12px;color:var(--muted);}
+.run-meta span{color:var(--text);}
+.badge{font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:rgba(74,240,184,.12);color:var(--accent2);}
+.badge.interval{background:rgba(240,196,74,.12);color:var(--warn);}
+
+/* MAP */
+.map-wrap{position:relative;width:100%;height:340px;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:8px;}
+#map,#map2{width:100%;height:100%;}
+.map-search-row{display:flex;gap:8px;margin-bottom:8px;}
+.map-search-row input{flex:1;font-size:15px;}
+.map-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.map-hint{font-size:12px;color:var(--muted);margin-bottom:12px;}
+.map-hint b{color:var(--accent);}
+.draw-active-banner{display:none;background:rgba(184,240,74,.12);border:1px solid var(--accent);border-radius:8px;padding:8px 12px;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;color:var(--accent);text-transform:uppercase;text-align:center;margin-bottom:8px;}
+
+/* INTERVALS */
+.interval-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;position:relative;}
+.remove-btn{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:0 4px;}
+.add-interval-btn{width:100%;background:none;border:1px dashed var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:10px;border-radius:8px;cursor:pointer;margin-bottom:12px;}
+
+/* ROUTES */
+.route-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
+.route-card-name{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:600;margin-bottom:3px;}
+.route-card-meta{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.route-actions{display:flex;gap:8px;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,15,14,.88);z-index:2000;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:24px 16px 40px;width:100%;max-height:90vh;overflow-y:auto;}
+.modal-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;margin-top:16px;}
+.detail-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.detail-key{color:var(--muted);}
+.interval-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+.interval-table th{font-family:'Barlow Condensed',sans-serif;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 6px;border-bottom:1px solid var(--border);}
+.interval-table td{padding:7px 6px;border-bottom:1px solid rgba(42,48,45,.4);}
+
+/* Leaflet dark override */
+.leaflet-container{background:#1e2421;}
+.leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important;}
+.leaflet-control-attribution{background:rgba(22,26,24,.8)!important;color:var(--muted)!important;font-size:9px!important;}
+.leaflet-control-attribution a{color:var(--muted)!important;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">STR<span>IDE</span><small>v20</small></div>
+</header>
+
+<main>
+  <!-- DASHBOARD -->
+  <div id="panel-dash" class="panel active">
+    <div class="page-pad">
+      <div class="section-title" style="margin-bottom:12px">This Week</div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="section-title">Last 8 Weeks</div>
+      <div class="bar-chart" id="mileage-chart"></div>
+      <div style="height:8px"></div>
+      <div class="section-title">Recent Runs</div>
+      <div id="run-list"></div>
+    </div>
+  </div>
+
+  <!-- LOG RUN -->
+  <div id="panel-log" class="panel">
+    <div class="page-pad">
+      <div class="section-title" style="margin-bottom:12px">Log a Run</div>
+
+      <div class="form-group"><label>Date</label><input type="date" id="run-date"></div>
+
+      <div class="form-group">
+        <label>Route</label>
+        <div class="toggle-group" id="route-mode-toggle">
+          <button class="toggle-btn active" onclick="setRouteMode('saved')">Saved Route</button>
+          <button class="toggle-btn" onclick="setRouteMode('draw')">Draw New</button>
+        </div>
+        <div id="route-saved-ui">
+          <select id="run-route-select" onchange="loadSavedRoute()"><option value="">— Select a route —</option></select>
+        </div>
+        <div id="route-draw-ui" style="display:none">
+          <input type="text" id="run-route-name" placeholder="Name this route…">
+        </div>
+      </div>
+
+      <label style="margin-bottom:6px">Map</label>
+      <div class="map-search-row">
+        <input type="text" id="log-search" placeholder="Search location…">
+        <button class="btn btn-secondary btn-sm" onclick="searchLog()">Go</button>
+      </div>
+      <div class="map-wrap"><div id="map"></div></div>
+      <div class="draw-active-banner" id="draw-banner">✏ Drawing active — tap map to plot points</div>
+      <div class="map-toolbar">
+        <button class="btn btn-secondary btn-sm" id="draw-btn" onclick="toggleLogDraw()">✏ Draw Route</button>
+        <button class="btn btn-secondary btn-sm" onclick="undoLog()">↩ Undo</button>
+        <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="clearLog()">✕ Clear</button>
+        <button class="btn btn-primary btn-sm" id="finish-log-btn" style="display:none" onclick="finishLog()">✓ Finish</button>
+      </div>
+      <div class="map-hint" id="log-hint">Search your area, then tap <b>Draw Route</b> and tap the map to plot points</div>
+
+      <div class="form-group"><label>Distance (km)</label><input type="number" id="run-dist" step="0.1" min="0" placeholder="0.0" inputmode="decimal"></div>
+
+      <div class="form-group">
+        <label>Run Type</label>
+        <div class="toggle-group" id="run-type-toggle">
+          <button class="toggle-btn active" onclick="setRunType('easy')">Easy</button>
+          <button class="toggle-btn" onclick="setRunType('tempo')">Tempo</button>
+          <button class="toggle-btn" onclick="setRunType('interval')">Intervals</button>
+        </div>
+      </div>
+
+      <div id="simple-run-ui">
+        <div class="row-2">
+          <div class="form-group"><label>Time (min)</label><input type="number" id="run-time" min="0" placeholder="0" inputmode="numeric"></div>
+          <div class="form-group"><label>Pace (min/km)</label><input type="text" id="run-pace" placeholder="auto" readonly style="opacity:.5"></div>
+        </div>
+      </div>
+
+      <div id="interval-run-ui" style="display:none">
+        <div class="row-2">
+          <div class="form-group"><label>Warmup (min)</label><input type="number" id="run-warmup" min="0" placeholder="0" inputmode="numeric"></div>
+          <div class="form-group"><label>Cooldown (min)</label><input type="number" id="run-cooldown" min="0" placeholder="0" inputmode="numeric"></div>
+        </div>
+        <div class="section-title" style="margin-bottom:10px">Intervals</div>
+        <div id="intervals-container"></div>
+        <button class="add-interval-btn" onclick="addInterval()">+ Add Interval</button>
+      </div>
+
+      <div class="form-group"><label>Notes</label><textarea id="run-notes" placeholder="How did it feel…"></textarea></div>
+      <button class="btn btn-primary" onclick="saveRun()">Save Run</button>
+      <div style="height:24px"></div>
+    </div>
+  </div>
+
+  <!-- ROUTES -->
+  <div id="panel-routes" class="panel">
+    <div class="page-pad">
+      <div class="section-title" style="margin-bottom:12px">Saved Routes</div>
+      <button class="btn btn-secondary" style="margin-bottom:14px" onclick="openNewRouteModal()">+ New Route</button>
+      <div id="routes-list"></div>
+    </div>
+  </div>
+</main>
+
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-dash" onclick="switchTab('dash')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="tab-btn" id="tab-log" onclick="switchTab('log')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+    Log Run
+  </button>
+  <button class="tab-btn" id="tab-routes" onclick="switchTab('routes')">
+    <svg viewBox="0 0 24 24"><path d="M3 17 Q6 7 12 12 Q18 17 21 7"/><circle cx="3" cy="17" r="2" fill="currentColor"/><circle cx="21" cy="7" r="2" fill="currentColor"/></svg>
+    Routes
+  </button>
+</div>
+
+<!-- NEW ROUTE MODAL -->
+<div class="modal-overlay" id="new-route-modal">
+  <div class="modal">
+    <div class="modal-title">New Route</div>
+    <div class="form-group"><label>Route Name</label><input type="text" id="new-route-name" placeholder="e.g. Park Loop"></div>
+    <div class="form-group"><label>Distance (km)</label><input type="number" id="new-route-dist" step="0.1" placeholder="0.0" inputmode="decimal"></div>
+    <label style="margin-bottom:6px;display:block">Map</label>
+    <div class="map-search-row">
+      <input type="text" id="route-search" placeholder="Search location…">
+      <button class="btn btn-secondary btn-sm" onclick="searchRoute()">Go</button>
+    </div>
+    <div class="map-wrap" style="height:280px"><div id="map2"></div></div>
+    <div class="draw-active-banner" id="draw-banner2">✏ Drawing active — tap map to plot points</div>
+    <div class="map-toolbar" style="margin-bottom:6px">
+      <button class="btn btn-secondary btn-sm" id="draw-btn2" onclick="toggleRouteDraw()">✏ Draw</button>
+      <button class="btn btn-secondary btn-sm" onclick="undoRoute()">↩ Undo</button>
+      <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="clearRoute()">✕ Clear</button>
+      <button class="btn btn-primary btn-sm" id="finish-route-btn" style="display:none" onclick="finishRoute()">✓ Finish</button>
+    </div>
+    <div class="map-hint"><span id="route-hint-text">Tap <b>Draw</b> then tap the map to plot your route</span></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="saveNewRoute()">Save Route</button>
+      <button class="btn btn-secondary" onclick="closeModal('new-route-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- RUN DETAIL MODAL -->
+<div class="modal-overlay" id="run-detail-modal">
+  <div class="modal">
+    <div class="modal-title" id="detail-title">Run</div>
+    <div id="detail-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal('run-detail-modal')">Close</button>
+      <button class="btn btn-secondary" id="detail-edit-btn" style="width:auto">✏ Edit</button>
+      <button class="btn btn-secondary" id="detail-delete-btn" style="color:var(--danger);border-color:var(--danger);width:auto">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT RUN MODAL -->
+<div class="modal-overlay" id="edit-run-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Run</div>
+    <input type="hidden" id="edit-run-id">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Route: <span id="edit-route-name"></span></div>
+    <div class="form-group"><label>Date</label><input type="date" id="edit-date"></div>
+    <div class="form-group">
+      <label>Run Type</label>
+      <div class="toggle-group" id="edit-type-toggle">
+        <button class="toggle-btn active" onclick="setEditRunType('easy')">Easy</button>
+        <button class="toggle-btn" onclick="setEditRunType('tempo')">Tempo</button>
+        <button class="toggle-btn" onclick="setEditRunType('interval')">Intervals</button>
+      </div>
+    </div>
+    <div id="edit-simple-ui">
+      <div class="row-2">
+        <div class="form-group"><label>Distance (km)</label><input type="number" id="edit-dist" step="0.1" inputmode="decimal"></div>
+        <div class="form-group"><label>Time (min)</label><input type="number" id="edit-time" min="0" inputmode="numeric" oninput="updateEditPace()"></div>
+      </div>
+      <div class="form-group"><label>Pace (min/km)</label><input type="text" id="edit-pace" readonly style="opacity:.5"></div>
+    </div>
+    <div id="edit-interval-ui" style="display:none">
+      <div class="row-2">
+        <div class="form-group"><label>Distance (km)</label><input type="number" id="edit-dist-iv" step="0.1" inputmode="decimal"></div>
+        <div class="form-group"></div>
+      </div>
+      <div class="row-2">
+        <div class="form-group"><label>Warmup (min)</label><input type="number" id="edit-warmup" min="0" inputmode="numeric"></div>
+        <div class="form-group"><label>Cooldown (min)</label><input type="number" id="edit-cooldown" min="0" inputmode="numeric"></div>
+      </div>
+      <div class="section-title" style="margin-bottom:10px">Intervals</div>
+      <div id="edit-intervals-container"></div>
+      <button class="add-interval-btn" onclick="addEditInterval()">+ Add Interval</button>
+      <div style="height:10px"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="edit-notes" placeholder="How did it feel…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="saveEditRun()">Save Changes</button>
+      <button class="btn btn-secondary" onclick="closeModal('edit-run-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+const DB={
+  get(k,d=[]){try{return JSON.parse(localStorage.getItem(k))??d;}catch{return d;}},
+  set(k,v){localStorage.setItem(k,JSON.stringify(v));}
+};
+let routes=DB.get('stride_routes',[]);
+// One-time clear of the two test runs
+if(!DB.get('stride_runs_cleared',false)){DB.set('stride_runs',[]);DB.set('stride_runs_cleared',true);}
+let runs=DB.get('stride_runs',[]);
+function saveRoutes(){DB.set('stride_routes',routes);}
+function saveRuns(){DB.set('stride_runs',runs);}
+
+// ── MAPS ──────────────────────────────────────────────────────────────────────
+let mapLog=null, mapRoute=null;
+let logPolyline=null, logMarkers=[], logLatLngs=[];
+let routePolyline=null, routeMarkers=[], routeLatLngs=[];
+let logDrawing=false, routeDrawing=false;
+let logViewLatLngs=null;
+
+const TILE='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATTR='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>';
+const DEFAULT_LAT=51.4545, DEFAULT_LNG=-2.5879;
+
+function startIcon(){
+  return L.divIcon({className:'',iconAnchor:[20,36],html:`
+    <div style="display:flex;flex-direction:column;align-items:center;">
+      <div style="background:#4af0b8;color:#0d0f0e;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;padding:2px 7px;border-radius:4px;white-space:nowrap;">START</div>
+      <div style="width:2px;height:8px;background:#4af0b8;"></div>
+      <div style="width:12px;height:12px;border-radius:50%;background:#4af0b8;border:2px solid rgba(0,0,0,0.5);"></div>
+    </div>`});
+}
+function dotIcon(color){
+  return L.divIcon({className:'',iconAnchor:[6,6],html:`<div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid rgba(0,0,0,0.5);"></div>`});
+}
+
+// Haversine distance in metres between two L.LatLng points
+function haversine(a,b){
+  const R=6371000, toR=Math.PI/180;
+  const dLat=(b.lat-a.lat)*toR, dLng=(b.lng-a.lng)*toR;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*toR)*Math.cos(b.lat*toR)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+function totalDistance(lls){
+  let d=0; for(let i=1;i<lls.length;i++) d+=haversine(lls[i-1],lls[i]); return d;
+}
+
+function updateDistanceHint(lls, hintId, distFieldId){
+  if(lls.length<2){document.getElementById(hintId).innerHTML=lls.length===1?'<b>Start</b> plotted — keep tapping to add points':'Search your area, then tap <b>Draw Route</b> and tap the map';return;}
+  const metres=totalDistance(lls);
+  const km=(metres/1000).toFixed(2);
+  const isLoop=haversine(lls[0],lls[lls.length-1])<20;
+  const loopNote=isLoop?' · <b style="color:var(--accent2)">Closed loop ↩</b>':'';
+  document.getElementById(hintId).innerHTML=`${lls.length} points · <b>${km} km</b>${loopNote} — tap <b>Finish</b> or keep plotting`;
+  if(distFieldId) document.getElementById(distFieldId).value=km;
+}
+
+function addLogPoint(latlng){
+  const isFirst=logLatLngs.length===0;
+  logLatLngs.push(latlng);
+  const m=L.marker(latlng,{icon:isFirst?startIcon():dotIcon('#b8f04a'),interactive:false}).addTo(mapLog);
+  logMarkers.push(m);
+  if(logPolyline) mapLog.removeLayer(logPolyline);
+  if(logLatLngs.length>1) logPolyline=L.polyline(logLatLngs,{color:'#b8f04a',weight:3,opacity:.9}).addTo(mapLog);
+  updateDistanceHint(logLatLngs,'log-hint','run-dist');
+  document.getElementById('finish-log-btn').style.display=logLatLngs.length>=2?'inline-block':'none';
+}
+
+function addRoutePoint(latlng){
+  const isFirst=routeLatLngs.length===0;
+  routeLatLngs.push(latlng);
+  const m=L.marker(latlng,{icon:isFirst?startIcon():dotIcon('#b8f04a'),interactive:false}).addTo(mapRoute);
+  routeMarkers.push(m);
+  if(routePolyline) mapRoute.removeLayer(routePolyline);
+  if(routeLatLngs.length>1) routePolyline=L.polyline(routeLatLngs,{color:'#b8f04a',weight:3,opacity:.9}).addTo(mapRoute);
+  updateDistanceHint(routeLatLngs,'route-hint-text','new-route-dist');
+  document.getElementById('finish-route-btn').style.display=routeLatLngs.length>=2?'inline-block':'none';
+}
+
+function finishLog(){
+  if(logLatLngs.length<2) return;
+  const metres=totalDistance(logLatLngs);
+  const km=(metres/1000).toFixed(2);
+  const isLoop=haversine(logLatLngs[0],logLatLngs[logLatLngs.length-1])<20;
+  setLogDrawing(false);
+  document.getElementById('finish-log-btn').style.display='none';
+  document.getElementById('run-dist').value=km;
+  document.getElementById('log-hint').innerHTML=`Route complete · <b>${km} km</b>${isLoop?' · <b style="color:var(--accent2)">Closed loop</b>':''}`;
+}
+
+function finishRoute(){
+  if(routeLatLngs.length<2) return;
+  const metres=totalDistance(routeLatLngs);
+  const km=(metres/1000).toFixed(2);
+  const isLoop=haversine(routeLatLngs[0],routeLatLngs[routeLatLngs.length-1])<20;
+  setRouteDrawing(false);
+  document.getElementById('finish-route-btn').style.display='none';
+  document.getElementById('new-route-dist').value=km;
+  document.getElementById('route-hint-text').innerHTML=`Route complete · <b>${km} km</b>${isLoop?' · <b style="color:var(--accent2)">Closed loop</b>':''}`;
+}
+
+function initMapLog(){
+  if(mapLog) return;
+  mapLog=L.map('map',{zoomControl:true,attributionControl:true}).setView([DEFAULT_LAT,DEFAULT_LNG],14);
+  L.tileLayer(TILE,{attribution:ATTR,maxZoom:19}).addTo(mapLog);
+  mapLog.on('click',function(e){ if(!logDrawing) return; addLogPoint(e.latlng); });
+}
+
+function initMapRoute(){
+  if(mapRoute) return;
+  mapRoute=L.map('map2',{zoomControl:true,attributionControl:true}).setView([DEFAULT_LAT,DEFAULT_LNG],14);
+  L.tileLayer(TILE,{attribution:ATTR,maxZoom:19}).addTo(mapRoute);
+  mapRoute.on('click',function(e){ if(!routeDrawing) return; addRoutePoint(e.latlng); });
+}
+
+function undoLog(){
+  if(!logLatLngs.length) return;
+  logLatLngs.pop();
+  const m=logMarkers.pop(); if(m) mapLog.removeLayer(m);
+  if(logPolyline){mapLog.removeLayer(logPolyline);logPolyline=null;}
+  if(logLatLngs.length>1) logPolyline=L.polyline(logLatLngs,{color:'#b8f04a',weight:3}).addTo(mapLog);
+  updateDistanceHint(logLatLngs,'log-hint','run-dist');
+  document.getElementById('finish-log-btn').style.display=logLatLngs.length>=2?'inline-block':'none';
+}
+
+function clearLog(){
+  logLatLngs=[]; logViewLatLngs=null;
+  logMarkers.forEach(m=>mapLog.removeLayer(m)); logMarkers=[];
+  if(logPolyline){mapLog.removeLayer(logPolyline);logPolyline=null;}
+  setLogDrawing(false);
+  document.getElementById('log-hint').innerHTML='Search your area, then tap <b>Draw Route</b> and tap the map to plot points';
+}
+
+function undoRoute(){
+  if(!routeLatLngs.length) return;
+  routeLatLngs.pop();
+  const m=routeMarkers.pop(); if(m) mapRoute.removeLayer(m);
+  if(routePolyline){mapRoute.removeLayer(routePolyline);routePolyline=null;}
+  if(routeLatLngs.length>1) routePolyline=L.polyline(routeLatLngs,{color:'#b8f04a',weight:3}).addTo(mapRoute);
+  updateDistanceHint(routeLatLngs,'route-hint-text','new-route-dist');
+  document.getElementById('finish-route-btn').style.display=routeLatLngs.length>=2?'inline-block':'none';
+}
+
+function clearRoute(){
+  routeLatLngs=[];
+  routeMarkers.forEach(m=>mapRoute.removeLayer(m)); routeMarkers=[];
+  if(routePolyline){mapRoute.removeLayer(routePolyline);routePolyline=null;}
+  setRouteDrawing(false);
+}
+
+function setLogDrawing(on){
+  logDrawing=on;
+  const btn=document.getElementById('draw-btn');
+  const banner=document.getElementById('draw-banner');
+  if(on){btn.style.borderColor='var(--accent)';btn.style.color='var(--accent)';banner.style.display='block';mapLog.getContainer().style.cursor='crosshair';}
+  else{btn.style.borderColor='';btn.style.color='';banner.style.display='none';if(mapLog)mapLog.getContainer().style.cursor='';}
+}
+
+function setRouteDrawing(on){
+  routeDrawing=on;
+  const btn=document.getElementById('draw-btn2');
+  const banner=document.getElementById('draw-banner2');
+  if(on){btn.style.borderColor='var(--accent)';btn.style.color='var(--accent)';banner.style.display='block';mapRoute.getContainer().style.cursor='crosshair';}
+  else{btn.style.borderColor='';btn.style.color='';banner.style.display='none';if(mapRoute)mapRoute.getContainer().style.cursor='';}
+}
+
+function toggleLogDraw(){setLogDrawing(!logDrawing);}
+function toggleRouteDraw(){setRouteDrawing(!routeDrawing);}
+
+async function geocode(q){
+  const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{'Accept-Language':'en'}});
+  const d=await r.json();
+  return d&&d.length?{lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)}:null;
+}
+
+async function searchLog(){
+  const q=document.getElementById('log-search').value.trim(); if(!q) return;
+  document.getElementById('log-hint').textContent='Searching…';
+  const loc=await geocode(q);
+  if(loc){mapLog.setView([loc.lat,loc.lng],15);document.getElementById('log-hint').innerHTML='Found! Tap <b>Draw Route</b> and tap the map to plot points';}
+  else document.getElementById('log-hint').textContent='Location not found. Try a different search.';
+}
+
+async function searchRoute(){
+  const q=document.getElementById('route-search').value.trim(); if(!q) return;
+  const loc=await geocode(q);
+  if(loc) mapRoute.setView([loc.lat,loc.lng],15);
+  else alert('Location not found.');
+}
+
+document.getElementById('log-search').addEventListener('keydown',e=>{if(e.key==='Enter')searchLog();});
+document.getElementById('route-search').addEventListener('keydown',e=>{if(e.key==='Enter')searchRoute();});
+
+// Show saved route on log map
+function loadSavedRoute(){
+  if(!mapLog) return;
+  // Clear existing drawn points
+  logLatLngs=[]; logMarkers.forEach(m=>mapLog.removeLayer(m)); logMarkers=[];
+  if(logPolyline){mapLog.removeLayer(logPolyline);logPolyline=null;}
+  const id=document.getElementById('run-route-select').value;
+  const r=routes.find(r=>r.id===id);
+  if(r&&r.latlngs&&r.latlngs.length>1){
+    const lls=r.latlngs.map(p=>L.latLng(p.lat,p.lng));
+    logPolyline=L.polyline(lls,{color:'#b8f04a',weight:3,opacity:.8}).addTo(mapLog);
+    lls.forEach((ll,i)=>{
+      const m=L.marker(ll,{icon:dotIcon(i===0?'#4af0b8':'#b8f04a'),interactive:false}).addTo(mapLog);
+      logMarkers.push(m);
+    });
+    mapLog.fitBounds(logPolyline.getBounds(),{padding:[20,20]});
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(t){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='dash') renderDash();
+  if(t==='log'){
+    populateRouteSelect();
+    setTimeout(()=>{initMapLog(); mapLog.invalidateSize();},200);
+  }
+  if(t==='routes') renderRoutesList();
+}
+
+// ── ROUTE MODE ────────────────────────────────────────────────────────────────
+let routeMode='saved', runType='easy';
+
+function setRouteMode(mode){
+  routeMode=mode;
+  document.querySelectorAll('#route-mode-toggle .toggle-btn').forEach((b,i)=>b.classList.toggle('active',i===(mode==='saved'?0:1)));
+  document.getElementById('route-saved-ui').style.display=mode==='saved'?'':'none';
+  document.getElementById('route-draw-ui').style.display=mode==='draw'?'':'none';
+  // Hide the manual Draw Route button when in draw-new mode (drawing starts automatically)
+  document.getElementById('draw-btn').style.display=mode==='draw'?'none':'inline-block';
+  clearLog();
+  if(mode==='draw'){
+    // Start drawing immediately
+    setTimeout(()=>setLogDrawing(true),50);
+    document.getElementById('log-hint').innerHTML='Tap the map to plot points — <b>START</b> marker appears on first tap';
+  }
+}
+
+function setRunType(type){
+  runType=type;
+  document.querySelectorAll('#run-type-toggle .toggle-btn').forEach((b,i)=>b.classList.toggle('active',['easy','tempo','interval'][i]===type));
+  document.getElementById('simple-run-ui').style.display=type!=='interval'?'':'none';
+  document.getElementById('interval-run-ui').style.display=type==='interval'?'':'none';
+}
+
+function populateRouteSelect(){
+  const sel=document.getElementById('run-route-select');
+  sel.innerHTML='<option value="">— Select a route —</option>';
+  routes.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=r.name+(r.dist?' ('+r.dist+' km)':'');sel.appendChild(o);});
+}
+
+// ── INTERVALS ─────────────────────────────────────────────────────────────────
+let ivc=0;
+function addInterval(){
+  ivc++; const id='iv-'+ivc; const el=document.createElement('div');
+  el.className='interval-block'; el.id=id;
+  el.innerHTML=`<button class="remove-btn" onclick="document.getElementById('${id}').remove()">×</button>
+    <div style="font-family:'Barlow Condensed';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Rep ${ivc}</div>
+    <div class="row-2">
+      <div class="form-group" style="margin-bottom:8px"><label>Reps</label><input type="number" class="iv-reps" min="1" value="1" inputmode="numeric"></div>
+      <div class="form-group" style="margin-bottom:8px"><label>Dist (m)</label><input type="number" class="iv-dist" placeholder="400" inputmode="numeric"></div>
+    </div>
+    <div class="row-2">
+      <div class="form-group" style="margin-bottom:8px"><label>Target</label><input type="text" class="iv-target" placeholder="mm:ss"></div>
+      <div class="form-group" style="margin-bottom:8px"><label>Actual</label><input type="text" class="iv-actual" placeholder="mm:ss"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:0"><label>Rest (min)</label><input type="number" class="iv-rest" placeholder="2" inputmode="decimal"></div>`;
+  document.getElementById('intervals-container').appendChild(el);
+}
+
+// ── SAVE RUN ──────────────────────────────────────────────────────────────────
+function saveRun(){
+  const date=document.getElementById('run-date').value;
+  if(!date){alert('Please enter a date.');return;}
+  let routeName='',routeId='',latlngs=[];
+  if(routeMode==='saved'){
+    routeId=document.getElementById('run-route-select').value;
+    const r=routes.find(r=>r.id===routeId);
+    routeName=r?r.name:''; latlngs=r?(r.latlngs||[]):[];
+  } else {
+    routeName=document.getElementById('run-route-name').value.trim()||'Custom Route';
+    latlngs=logLatLngs.map(ll=>({lat:ll.lat,lng:ll.lng}));
+    if(latlngs.length>1){
+      const nr={id:'r'+Date.now(),name:routeName,dist:parseFloat(document.getElementById('run-dist').value)||0,latlngs,created:date};
+      routes.push(nr);saveRoutes();routeId=nr.id;
+    }
+  }
+  const dist=parseFloat(document.getElementById('run-dist').value)||0;
+  const notes=document.getElementById('run-notes').value.trim();
+  let run={id:'run'+Date.now(),date,routeId,routeName,dist,type:runType,notes,latlngs};
+  if(runType!=='interval'){
+    const time=parseFloat(document.getElementById('run-time').value)||0;
+    run.time=time; run.pace=dist>0&&time>0?(time/dist).toFixed(2):null;
+  } else {
+    run.warmup=parseFloat(document.getElementById('run-warmup').value)||0;
+    run.cooldown=parseFloat(document.getElementById('run-cooldown').value)||0;
+    const ivs=[];
+    document.querySelectorAll('#intervals-container .interval-block').forEach(b=>{
+      ivs.push({reps:parseInt(b.querySelector('.iv-reps').value)||1,dist:parseInt(b.querySelector('.iv-dist').value)||0,target:b.querySelector('.iv-target').value.trim(),actual:b.querySelector('.iv-actual').value.trim(),rest:parseFloat(b.querySelector('.iv-rest').value)||0});
+    });
+    run.intervals=ivs;
+  }
+  runs.unshift(run); saveRuns();
+  // Reset
+  document.getElementById('run-dist').value='';
+  document.getElementById('run-notes').value='';
+  document.getElementById('run-route-select').value='';
+  document.getElementById('intervals-container').innerHTML='';
+  clearLog(); setRouteMode('saved'); setRunType('easy');
+  switchTab('dash');
+}
+
+// ── ROUTES PANEL ──────────────────────────────────────────────────────────────
+function renderRoutesList(){
+  const el=document.getElementById('routes-list');
+  if(!routes.length){el.innerHTML='<div class="empty"><span class="empty-icon">🗺️</span>No routes yet.<br>Tap + New Route to draw one.</div>';return;}
+  el.innerHTML='';
+  routes.forEach(r=>{
+    const card=document.createElement('div'); card.className='route-card';
+    card.innerHTML=`<div class="route-card-name">${r.name}</div>
+      <div class="route-card-meta">${r.dist?r.dist+' km · ':''} ${r.latlngs?r.latlngs.length:0} points</div>
+      <div class="route-actions">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="viewRouteDetail('${r.id}')">View</button>
+        <button class="btn btn-secondary btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteRoute('${r.id}')">Delete</button>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+
+let mapRouteView=null, routeViewPolyline=null, routeViewMarkers=[];
+
+function viewRouteDetail(id){
+  const r=routes.find(r=>r.id===id); if(!r) return;
+  document.getElementById('route-view-title').textContent=r.name;
+  document.getElementById('route-view-meta').innerHTML=
+    `${r.dist?'<b>'+r.dist+' km</b> · ':''}${r.latlngs?r.latlngs.length:0} points · Created ${r.created||'—'}`;
+  document.getElementById('route-view-delete-btn').onclick=()=>{
+    if(!confirm('Delete this route?')) return;
+    deleteRoute(id); closeModal('route-view-modal');
+  };
+
+  // Open modal first, then init map after it's painted
+  document.getElementById('route-view-modal').dataset.routeId=id;
+  document.getElementById('route-view-modal').classList.add('open');
+
+  const drawRouteOnMap = () => {
+    // Clear previous
+    routeViewMarkers.forEach(m=>mapRouteView.removeLayer(m)); routeViewMarkers=[];
+    if(routeViewPolyline){mapRouteView.removeLayer(routeViewPolyline);routeViewPolyline=null;}
+
+    if(!r.latlngs||r.latlngs.length===0){ mapRouteView.setView([DEFAULT_LAT,DEFAULT_LNG],14); return; }
+
+    const lls=r.latlngs.map(p=>L.latLng(p.lat,p.lng));
+
+    if(lls.length===1){
+      mapRouteView.setView(lls[0],15);
+      const m=L.marker(lls[0],{icon:startIcon(),interactive:false}).addTo(mapRouteView);
+      routeViewMarkers.push(m);
+      return;
+    }
+
+    // Catmull-Rom spline: interpolate smooth curve through all points
+    // Work in lat/lng space (fine for small areas)
+    function catmullRomSegment(p0,p1,p2,p3,steps){
+      const pts=[];
+      for(let i=0;i<=steps;i++){
+        const t=i/steps, t2=t*t, t3=t2*t;
+        const lat=0.5*((2*p1.lat)+(-p0.lat+p2.lat)*t+(2*p0.lat-5*p1.lat+4*p2.lat-p3.lat)*t2+(-p0.lat+3*p1.lat-3*p2.lat+p3.lat)*t3);
+        const lng=0.5*((2*p1.lng)+(-p0.lng+p2.lng)*t+(2*p0.lng-5*p1.lng+4*p2.lng-p3.lng)*t2+(-p0.lng+3*p1.lng-3*p2.lng+p3.lng)*t3);
+        pts.push(L.latLng(lat,lng));
+      }
+      return pts;
+    }
+
+    const steps=16; // interpolation steps per segment
+    const smooth=[];
+    // Pad endpoints so the curve passes through first and last points
+    const pts=[lls[0],...lls,lls[lls.length-1]];
+    for(let i=1;i<pts.length-2;i++){
+      const seg=catmullRomSegment(pts[i-1],pts[i],pts[i+1],pts[i+2],steps);
+      if(i>1) seg.shift(); // avoid duplicating join point
+      smooth.push(...seg);
+    }
+
+    routeViewPolyline=L.polyline(smooth,{color:'#f04a4a',weight:2.5,opacity:.85}).addTo(mapRouteView);
+    mapRouteView.fitBounds(routeViewPolyline.getBounds(),{padding:[24,24]});
+
+    // Start marker — chequered flag if loop, START pin otherwise
+    const isLoop=haversine(lls[0],lls[lls.length-1])<20;
+    const loopIcon=L.divIcon({className:'',iconAnchor:[12,12],html:`<div style="font-size:24px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6))">🏁</div>`});
+    const mStart=L.marker(lls[0],{icon:isLoop?loopIcon:startIcon(),interactive:false}).addTo(mapRouteView);
+    routeViewMarkers.push(mStart);
+
+    // End marker only if not a closed loop
+    if(!isLoop){
+      const endIcon=L.divIcon({className:'',iconAnchor:[20,36],html:`
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="background:#f04a4a;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;padding:2px 7px;border-radius:4px;white-space:nowrap;">END</div>
+          <div style="width:2px;height:8px;background:#f04a4a;"></div>
+          <div style="width:12px;height:12px;border-radius:50%;background:#f04a4a;border:2px solid rgba(0,0,0,0.5);"></div>
+        </div>`});
+      const mEnd=L.marker(lls[lls.length-1],{icon:endIcon,interactive:false}).addTo(mapRouteView);
+      routeViewMarkers.push(mEnd);
+    }
+  };
+
+  if(!mapRouteView){
+    // First time: wait for modal to paint then create map
+    setTimeout(()=>{
+      const el=document.getElementById('map-route-view');
+      el.style.height='300px'; // ensure explicit height
+      mapRouteView=L.map('map-route-view',{zoomControl:true,attributionControl:true})
+        .setView([DEFAULT_LAT,DEFAULT_LNG],14);
+      L.tileLayer(TILE,{attribution:ATTR,maxZoom:19}).addTo(mapRouteView);
+      mapRouteView.invalidateSize();
+      drawRouteOnMap();
+    },350);
+  } else {
+    setTimeout(()=>{
+      mapRouteView.invalidateSize();
+      drawRouteOnMap();
+    },350);
+  }
+}
+
+function deleteRoute(id){
+  if(!confirm('Delete this route?')) return;
+  routes=routes.filter(r=>r.id!==id); saveRoutes(); renderRoutesList();
+}
+
+function openRenameRoute(){
+  const id=document.getElementById('route-view-modal').dataset.routeId;
+  const r=routes.find(r=>r.id===id); if(!r) return;
+  document.getElementById('rename-route-id').value=id;
+  document.getElementById('rename-route-input').value=r.name;
+  document.getElementById('rename-route-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('rename-route-input').focus(),100);
+}
+
+function saveRenameRoute(){
+  const id=document.getElementById('rename-route-id').value;
+  const name=document.getElementById('rename-route-input').value.trim();
+  if(!name){alert('Please enter a name.');return;}
+  const r=routes.find(r=>r.id===id); if(!r) return;
+  r.name=name;
+  // Also update any runs that reference this route
+  runs.forEach(run=>{if(run.routeId===id) run.routeName=name;});
+  saveRoutes(); saveRuns();
+  // Update view modal title
+  document.getElementById('route-view-title').textContent=name;
+  closeModal('rename-route-modal');
+  renderRoutesList();
+}
+
+function openNewRouteModal(){
+  document.getElementById('new-route-name').value='';
+  document.getElementById('new-route-dist').value='';
+  routeLatLngs=[]; routeMarkers=[]; routePolyline=null; routeDrawing=false;
+  document.getElementById('new-route-modal').classList.add('open');
+  setTimeout(()=>{
+    initMapRoute();
+    mapRoute.invalidateSize();
+  },250);
+}
+
+function saveNewRoute(){
+  const name=document.getElementById('new-route-name').value.trim();
+  const dist=parseFloat(document.getElementById('new-route-dist').value)||0;
+  if(!name){alert('Please enter a route name.');return;}
+  const r={id:'r'+Date.now(),name,dist,latlngs:routeLatLngs.map(ll=>({lat:ll.lat,lng:ll.lng})),created:new Date().toISOString().slice(0,10)};
+  routes.push(r); saveRoutes();
+  clearRoute();
+  closeModal('new-route-modal'); renderRoutesList();
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDash(){
+  const now=new Date();
+  const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
+  const ms=new Date(now.getFullYear(),now.getMonth(),1);
+  const wr=runs.filter(r=>new Date(r.date)>=ws);
+  const wd=wr.reduce((s,r)=>s+(r.dist||0),0);
+  const md=runs.filter(r=>new Date(r.date)>=ms).reduce((s,r)=>s+(r.dist||0),0);
+  const pr=runs.filter(r=>r.pace);
+  const ap=pr.length?(pr.reduce((s,r)=>s+parseFloat(r.pace),0)/pr.length).toFixed(2):null;
+  document.getElementById('stats-grid').innerHTML=[
+    {l:'This Week',v:wd.toFixed(1),s:'km'},{l:'Runs',v:wr.length,s:'this week'},
+    {l:'This Month',v:md.toFixed(1),s:'km'},{l:'Avg Pace',v:ap?fmtPace(ap):'—',s:'min/km'},
+  ].map(s=>`<div class="stat-card"><div class="stat-label">${s.l}</div><div class="stat-value">${s.v}</div><div class="stat-sub">${s.s}</div></div>`).join('');
+
+  const weeks=[];
+  for(let i=7;i>=0;i--){
+    const a=new Date(ws); a.setDate(a.getDate()-i*7);
+    const b=new Date(a); b.setDate(b.getDate()+7);
+    const km=runs.filter(r=>{const d=new Date(r.date);return d>=a&&d<b;}).reduce((s,r)=>s+(r.dist||0),0);
+    weeks.push({l:a.toLocaleDateString('en',{month:'short',day:'numeric'}),km});
+  }
+  const mx=Math.max(...weeks.map(w=>w.km),1);
+  document.getElementById('mileage-chart').innerHTML=weeks.map(w=>`<div class="bar-wrap"><div class="bar-col"><div class="bar" style="height:${Math.max(4,(w.km/mx)*100)}%" title="${w.km.toFixed(1)} km"></div></div><div class="bar-label">${w.l.split(' ')[0].slice(0,3)}</div></div>`).join('');
+
+  const list=document.getElementById('run-list');
+  if(!runs.length){list.innerHTML='<div class="empty"><span class="empty-icon">🏃</span>No runs yet.<br>Tap Log Run to get started.</div>';return;}
+  const sorted=[...runs].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  list.innerHTML=sorted.slice(0,15).map(r=>`
+    <div class="run-item" onclick="showRunDetail('${r.id}')">
+      <div class="run-date">${fmtDate(r.date)}</div>
+      <div class="run-route">${r.routeName||'Custom'}</div>
+      <div class="run-meta">
+        ${r.dist?`<span>${r.dist} km</span>`:''}
+        ${r.pace?`<span>${fmtPace(r.pace)}/km</span>`:''}
+        ${r.type==='interval'?'<span class="badge interval">Intervals</span>':''}
+        ${r.type==='tempo'?'<span class="badge">Tempo</span>':''}
+      </div>
+    </div>`).join('');
+}
+
+function fmtDate(d){return new Date(d+'T00:00:00').toLocaleDateString('en',{day:'numeric',month:'short'});}
+function fmtPace(p){const m=Math.floor(p),s=Math.round((p-m)*60);return `${m}:${s.toString().padStart(2,'0')}`;}
+
+let mapRunDetail=null, runDetailPolyline=null, runDetailMarkers=[];
+
+function showRunDetail(id){
+  const r=runs.find(r=>r.id===id); if(!r) return;
+
+  // Resolve latlngs — from the run itself, or from its saved route
+  const latlngs=r.latlngs && r.latlngs.length ? r.latlngs
+    : routes.find(rt=>rt.id===r.routeId)?.latlngs || [];
+
+  document.getElementById('detail-title').textContent=r.routeName||'Run';
+  let html=`
+    <div class="detail-row"><span class="detail-key">Date</span><span>${fmtDate(r.date)}</span></div>
+    <div class="detail-row"><span class="detail-key">Type</span><span style="text-transform:capitalize">${r.type}</span></div>
+    ${r.dist?`<div class="detail-row"><span class="detail-key">Distance</span><span>${r.dist} km</span></div>`:''}
+    ${r.time?`<div class="detail-row"><span class="detail-key">Time</span><span>${r.time} min</span></div>`:''}
+    ${r.pace?`<div class="detail-row"><span class="detail-key">Pace</span><span>${fmtPace(r.pace)} /km</span></div>`:''}
+    ${r.notes?`<div style="margin-top:12px;font-size:14px;color:var(--muted)">${r.notes}</div>`:''}`;
+  if(r.type==='interval'&&r.intervals?.length){
+    html+=`<div style="margin-top:14px"><div class="section-title" style="margin-bottom:8px">Intervals</div>
+      <table class="interval-table"><tr><th>Reps</th><th>Dist</th><th>Target</th><th>Actual</th><th>Rest</th></tr>
+      ${r.intervals.map(iv=>`<tr><td>${iv.reps}</td><td>${iv.dist}m</td><td>${iv.target||'—'}</td><td>${iv.actual||'—'}</td><td>${iv.rest}m</td></tr>`).join('')}
+      </table></div>`;
+  }
+  // Show map placeholder if we have points
+  if(latlngs.length>0) html+=`<div style="margin-top:14px"><div id="map-run-detail" style="width:100%;height:220px;border-radius:8px;border:1px solid var(--border);"></div></div>`;
+
+  document.getElementById('detail-content').innerHTML=html;
+  document.getElementById('detail-delete-btn').onclick=()=>{
+    if(!confirm('Delete?')) return;
+    runs=runs.filter(x=>x.id!==id); saveRuns(); closeModal('run-detail-modal'); renderDash();
+  };
+  document.getElementById('detail-edit-btn').onclick=()=>openEditRun(id);
+  document.getElementById('run-detail-modal').classList.add('open');
+
+  // Draw map if we have points
+  if(latlngs.length>0){
+    setTimeout(()=>{
+      // Destroy previous instance if exists
+      if(mapRunDetail){ mapRunDetail.remove(); mapRunDetail=null; }
+      runDetailMarkers=[]; runDetailPolyline=null;
+
+      mapRunDetail=L.map('map-run-detail',{zoomControl:false,attributionControl:false})
+        .setView([DEFAULT_LAT,DEFAULT_LNG],14);
+      L.tileLayer(TILE,{attribution:ATTR,maxZoom:19}).addTo(mapRunDetail);
+      mapRunDetail.invalidateSize();
+
+      const lls=latlngs.map(p=>L.latLng(p.lat,p.lng));
+
+      if(lls.length>1){
+        // Catmull-Rom spline (same as route view)
+        function crSeg(p0,p1,p2,p3,steps){
+          const pts=[];
+          for(let i=0;i<=steps;i++){
+            const t=i/steps,t2=t*t,t3=t2*t;
+            const lat=0.5*((2*p1.lat)+(-p0.lat+p2.lat)*t+(2*p0.lat-5*p1.lat+4*p2.lat-p3.lat)*t2+(-p0.lat+3*p1.lat-3*p2.lat+p3.lat)*t3);
+            const lng=0.5*((2*p1.lng)+(-p0.lng+p2.lng)*t+(2*p0.lng-5*p1.lng+4*p2.lng-p3.lng)*t2+(-p0.lng+3*p1.lng-3*p2.lng+p3.lng)*t3);
+            pts.push(L.latLng(lat,lng));
+          }
+          return pts;
+        }
+        const pts=[lls[0],...lls,lls[lls.length-1]];
+        const smooth=[];
+        for(let i=1;i<pts.length-2;i++){
+          const seg=crSeg(pts[i-1],pts[i],pts[i+1],pts[i+2],16);
+          if(i>1) seg.shift();
+          smooth.push(...seg);
+        }
+        runDetailPolyline=L.polyline(smooth,{color:'#f04a4a',weight:2.5,opacity:.85}).addTo(mapRunDetail);
+        mapRunDetail.fitBounds(runDetailPolyline.getBounds(),{padding:[20,20]});
+      } else {
+        mapRunDetail.setView(lls[0],15);
+      }
+
+      // Start marker
+      const isLoop=lls.length>1&&haversine(lls[0],lls[lls.length-1])<20;
+      const loopIcon=L.divIcon({className:'',iconAnchor:[12,12],html:`<div style="font-size:22px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6))">🏁</div>`});
+      L.marker(lls[0],{icon:isLoop?loopIcon:startIcon(),interactive:false}).addTo(mapRunDetail);
+
+      // End marker if not a loop
+      if(!isLoop&&lls.length>1){
+        const endIcon=L.divIcon({className:'',iconAnchor:[20,36],html:`
+          <div style="display:flex;flex-direction:column;align-items:center;">
+            <div style="background:#f04a4a;color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;padding:2px 7px;border-radius:4px;white-space:nowrap;">END</div>
+            <div style="width:2px;height:8px;background:#f04a4a;"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#f04a4a;border:2px solid rgba(0,0,0,0.5);"></div>
+          </div>`});
+        L.marker(lls[lls.length-1],{icon:endIcon,interactive:false}).addTo(mapRunDetail);
+      }
+    },350);
+  }
+}
+
+function openEditRun(id){
+  const r=runs.find(r=>r.id===id); if(!r) return;
+  closeModal('run-detail-modal');
+
+  // Populate edit form
+  document.getElementById('edit-run-id').value=id;
+  document.getElementById('edit-date').value=r.date;
+  document.getElementById('edit-dist').value=r.dist||'';
+  document.getElementById('edit-dist-iv').value=r.dist||'';
+  document.getElementById('edit-time').value=r.time||'';
+  document.getElementById('edit-notes').value=r.notes||'';
+  document.getElementById('edit-route-name').textContent=r.routeName||'Custom';
+
+  // Type toggle
+  ['easy','tempo','interval'].forEach((t,i)=>{
+    document.querySelectorAll('#edit-type-toggle .toggle-btn')[i].classList.toggle('active',r.type===t);
+  });
+  editRunType=r.type;
+  document.getElementById('edit-simple-ui').style.display=r.type!=='interval'?'':'none';
+  document.getElementById('edit-interval-ui').style.display=r.type==='interval'?'':'none';
+
+  // Pace display
+  updateEditPace();
+
+  // Intervals
+  const ic=document.getElementById('edit-intervals-container');
+  ic.innerHTML='';
+  if(r.type==='interval'&&r.intervals){
+    r.intervals.forEach((iv,i)=>{
+      ic.appendChild(makeEditInterval(i+1,iv));
+    });
+  }
+
+  document.getElementById('edit-run-modal').classList.add('open');
+}
+
+let editRunType='easy';
+function setEditRunType(type){
+  editRunType=type;
+  document.querySelectorAll('#edit-type-toggle .toggle-btn').forEach((b,i)=>b.classList.toggle('active',['easy','tempo','interval'][i]===type));
+  document.getElementById('edit-simple-ui').style.display=type!=='interval'?'':'none';
+  document.getElementById('edit-interval-ui').style.display=type==='interval'?'':'none';
+}
+
+function updateEditPace(){
+  const t=parseFloat(document.getElementById('edit-time').value);
+  const d=parseFloat(document.getElementById('edit-dist').value);
+  document.getElementById('edit-pace').value=(t>0&&d>0)?fmtPace(t/d):'';
+}
+
+let editIvc=0;
+function makeEditInterval(num,iv){
+  editIvc++; const id='eiv-'+editIvc;
+  const el=document.createElement('div'); el.className='interval-block'; el.id=id;
+  el.innerHTML=`<button class="remove-btn" onclick="document.getElementById('${id}').remove()">×</button>
+    <div style="font-family:'Barlow Condensed';font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Rep ${num}</div>
+    <div class="row-2">
+      <div class="form-group" style="margin-bottom:8px"><label>Reps</label><input type="number" class="iv-reps" min="1" value="${iv?.reps||1}" inputmode="numeric"></div>
+      <div class="form-group" style="margin-bottom:8px"><label>Dist (m)</label><input type="number" class="iv-dist" value="${iv?.dist||''}" placeholder="400" inputmode="numeric"></div>
+    </div>
+    <div class="row-2">
+      <div class="form-group" style="margin-bottom:8px"><label>Target</label><input type="text" class="iv-target" value="${iv?.target||''}" placeholder="mm:ss"></div>
+      <div class="form-group" style="margin-bottom:8px"><label>Actual</label><input type="text" class="iv-actual" value="${iv?.actual||''}" placeholder="mm:ss"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:0"><label>Rest (min)</label><input type="number" class="iv-rest" value="${iv?.rest||''}" placeholder="2" inputmode="decimal"></div>`;
+  return el;
+}
+
+function addEditInterval(){
+  document.getElementById('edit-intervals-container').appendChild(makeEditInterval(++editIvc,null));
+}
+
+function saveEditRun(){
+  const id=document.getElementById('edit-run-id').value;
+  const idx=runs.findIndex(r=>r.id===id); if(idx<0) return;
+  const r=runs[idx];
+  r.date=document.getElementById('edit-date').value||r.date;
+  r.dist=parseFloat(document.getElementById(editRunType==='interval'?'edit-dist-iv':'edit-dist').value)||r.dist;
+  r.notes=document.getElementById('edit-notes').value.trim();
+  r.type=editRunType;
+  if(editRunType!=='interval'){
+    const time=parseFloat(document.getElementById('edit-time').value)||0;
+    r.time=time;
+    r.pace=r.dist>0&&time>0?(time/r.dist).toFixed(2):null;
+  } else {
+    r.warmup=parseFloat(document.getElementById('edit-warmup').value)||0;
+    r.cooldown=parseFloat(document.getElementById('edit-cooldown').value)||0;
+    const ivs=[];
+    document.querySelectorAll('#edit-intervals-container .interval-block').forEach(b=>{
+      ivs.push({reps:parseInt(b.querySelector('.iv-reps').value)||1,dist:parseInt(b.querySelector('.iv-dist').value)||0,target:b.querySelector('.iv-target').value.trim(),actual:b.querySelector('.iv-actual').value.trim(),rest:parseFloat(b.querySelector('.iv-rest').value)||0});
+    });
+    r.intervals=ivs;
+  }
+  runs[idx]=r; saveRuns();
+  closeModal('edit-run-modal'); renderDash();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('run-date').value=new Date().toISOString().slice(0,10);
+['run-time','run-dist'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{
+    const t=parseFloat(document.getElementById('run-time').value);
+    const d=parseFloat(document.getElementById('run-dist').value);
+    document.getElementById('run-pace').value=(t>0&&d>0)?fmtPace(t/d):'';
+  });
+});
+renderDash();
+</script>
+<!-- ROUTE VIEW MODAL -->
+<div class="modal-overlay" id="route-view-modal">
+  <div class="modal">
+    <div class="modal-title" id="route-view-title">Route</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px" id="route-view-meta"></div>
+    <div class="map-wrap" style="height:300px;margin-bottom:12px"><div id="map-route-view" style="width:100%;height:300px;"></div></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeModal('route-view-modal')">Close</button>
+      <button class="btn btn-secondary" id="route-view-rename-btn" style="width:auto" onclick="openRenameRoute()">✏ Rename</button>
+      <button class="btn btn-secondary" id="route-view-delete-btn" style="color:var(--danger);border-color:var(--danger);width:auto">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME ROUTE MODAL -->
+<div class="modal-overlay" id="rename-route-modal">
+  <div class="modal">
+    <div class="modal-title">Rename Route</div>
+    <input type="hidden" id="rename-route-id">
+    <div class="form-group"><label>Route Name</label><input type="text" id="rename-route-input" placeholder="Route name…"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" style="flex:1" onclick="saveRenameRoute()">Save</button>
+      <button class="btn btn-secondary" onclick="closeModal('rename-route-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Stride SW registered:', reg.scope))
+      .catch(err => console.log('Stride SW failed:', err));
+  });
+}
+</script>
+</body>
+</html>
